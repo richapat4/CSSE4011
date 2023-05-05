@@ -1,0 +1,35 @@
+CSSE4011 Project
+
+- [x] Select which radar module to use  
+	- AWR1843 seems the best to use with I2C, UART, SPI interfaces. A111 is just SPI
+- [ ] Select which board is best to use 
+	- Could use Jetson -> program everything in python, runs machine learning on the board/ high speeds -> have no clue how it works
+	- ESP32 can work just fine machine learning will have to be done on PC 
+	- STM / can use Cube IDE 
+- [ ] Ask about whether or not we need to program the AWR1843 radar module 
+	- Probably not by the looks of it uses CLI interface ? not sure if this is just with the SDK
+- [ ] Make sense of the CLI commands if the above is true
+
+***Radar Module Resources 
+- https://dev.ti.com/tirex/explore/node?node=A__AGvTEJkh-csqqwXnVhDbTQ__radar_toolbox__1AslXXD__LATEST (How the byte packets are sent )
+- https://github.com/nevinsehbal/TI_awr1843_Uart_Parser
+
+- [GitHub - ibaiGorordo/AWR1843-Read-Data-Python-MMWAVE-SDK-3-: Python program to read and plot the data in real time from the AWR1843 mmWave radar board (MMWAVE SDK 3)](https://github.com/ibaiGorordo/AWR1843-Read-Data-Python-MMWAVE-SDK-3-)
+
+**Occupancy Tracker
+https://dev.ti.com/tirex/explore/node?node=A__AAuDdt.wtlplqcBoTFXitg__radar_toolbox__1AslXXD__LATEST
+
+
+""""
+screen  /dev/ttyACM0 1152000 -> CLI port  (Send commands through CLI port)
+screen  /dev/ttyACM1 1152000 -> data port 
+
+""""
+se the 3.3 / 3.5 versions 
+
+There should be a demo folder with a bin file,
+open up uniflash and flash the binary file onto the radar 
+
+- Uniflash 
+	- Make sure the radar is in flashing mode 
+	- Make sure it's in SCP mode 5 
