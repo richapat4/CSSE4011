@@ -1,0 +1,157 @@
+
+mmwDemo:/>% ***************************************************************
+Skipped
+
+mmwDemo:/>% Created for SDK ver:03.05
+Skipped
+
+mmwDemo:/>% Created using Visualizer ver:3.6.0.0
+Skipped
+
+mmwDemo:/>% Frequency:77
+Skipped
+
+mmwDemo:/>% Platform:xWR18xx
+Skipped
+
+mmwDemo:/>% Scene Classifier:best_range_res
+Skipped
+
+mmwDemo:/>% Azimuth Resolution(deg):15
+Skipped
+
+mmwDemo:/>% Range Resolution(m):0.044
+Skipped
+
+mmwDemo:/>% Maximum unambiguous Range(m):9.02
+Skipped
+
+mmwDemo:/>% Maximum Radial Velocity(m/s):1
+Skipped
+
+mmwDemo:/>% Radial velocity resolution(m/s):0.13
+Skipped
+
+mmwDemo:/>% Frame Duration(msec):100
+Skipped
+
+mmwDemo:/>% RF calibration data:None
+Skipped
+
+mmwDemo:/>% Range Detection Threshold (dB):15
+Skipped
+
+mmwDemo:/>% Doppler Detection Threshold (dB):15
+Skipped
+
+mmwDemo:/>% Range Peak Grouping:enabled
+Skipped
+
+mmwDemo:/>% Doppler Peak Grouping:enabled
+Skipped
+
+mmwDemo:/>% Static clutter removal:disabled
+Skipped
+
+mmwDemo:/>% Angle of Arrival FoV: Full FoV
+Skipped
+
+mmwDemo:/>% Range FoV: Full FoV
+Skipped
+
+mmwDemo:/>% Doppler FoV: Full FoV
+Skipped
+
+mmwDemo:/>% ***************************************************************
+Skipped
+
+mmwDemo:/>sensorStop
+Ignored: Sensor is already stopped
+
+Done
+
+mmwDemo:/>flushCfg
+Done
+
+mmwDemo:/>dfeDataOutputMode 1
+Done
+
+mmwDemo:/>channelCfg 15 5 0
+Done
+
+mmwDemo:/>adcCfg 2 1
+Done
+
+mmwDemo:/>adcbufCfg -1 0 1 1 1
+Done
+
+mmwDemo:/>profileCfg 0 77 429 7 57.14 0 0 70 1 256 5209 0 0 30
+Done
+
+mmwDemo:/>chirpCfg 0 0 0 0 0 0 0 1
+Done
+
+mmwDemo:/>chirpCfg 1 1 0 0 0 0 0 4
+Done
+
+mmwDemo:/>frameCfg 0 1 16 0 100 1 0
+Done
+
+mmwDemo:/>lowPower 0 0
+Done
+
+mmwDemo:/>guiMonitor -1 1 1 0 0 0 1
+Done
+
+mmwDemo:/>cfarCfg -1 0 2 8 4 3 0 15 1
+Done
+
+mmwDemo:/>cfarCfg -1 1 0 4 2 3 1 15 1
+Done
+
+mmwDemo:/>multiObjBeamForming -1 1 0.5
+Done
+
+mmwDemo:/>clutterRemoval -1 0
+Done
+
+mmwDemo:/>calibDcRangeSig -1 0 -5 8 256
+Done
+
+mmwDemo:/>extendedMaxVelocity -1 0
+Done
+
+mmwDemo:/>lvdsStreamCfg -1 0 0 0
+Done
+
+mmwDemo:/>compRangeBiasAndRxChanPhase 0.0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0
+Done
+
+mmwDemo:/>measureRangeBiasAndRxChanPhase 0 1.5 0.2
+Done
+
+mmwDemo:/>CQRxSatMonitor 0 3 5 121 0
+Done
+
+mmwDemo:/>CQSigImgMonitor 0 127 4
+Done
+
+mmwDemo:/>analogMonitor 0 0
+Done
+
+mmwDemo:/>aoaFovCfg -1 -90 90 -90 90
+Done
+
+mmwDemo:/>cfarFovCfg -1 0 0 8.92
+Done
+
+mmwDemo:/>cfarFovCfg -1 1 -1 1.00
+Done
+
+mmwDemo:/>calibData 0 0 0
+Done
+
+mmwDemo:/>sensorStart
+Debug: Init Calibration Status = 0x1ffe
+
+Done
