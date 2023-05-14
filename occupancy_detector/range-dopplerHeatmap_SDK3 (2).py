@@ -7,15 +7,15 @@ import pandas as pd
 duration = 2
 start_time = 0
 # Change the configuration file name
-configFileName = 'test_1_best_velocity_res.cfg'
-
+configFileName = 'test_4_removed_range_peak_grouping.cfg'
+count = 0
 CLIport = {}
 Dataport = {}
 byteBuffer = np.zeros(2**15,dtype = 'uint8')
 byteBufferLength = 0
 
 #  = pd.DataFrame(columns = ['X', 'Y','Z','Velocity'])
-testData = pd.DataFrame({'X': 1, 'Y': 2,'Z': 2,'Velocity': 2}, index=[0])
+testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
 # testData = pd.DataFrame([0,0,0,0],columns = ['X', 'Y','Z','Velocity'])
 
 
@@ -230,12 +230,14 @@ def readAndParseData18xx(Dataport, configParameters):
                     idX += 4
                     velocity[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
                     idX += 4
-                    
-                    if(time.time() - start_time < 5):
+
+                    # if((time.time() - start_time) > 1):
+                    if(count < 10):
                         entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
                         testData.loc[len(testData)] = entry
                         print(testData)
-                    
+                    # count+=1
+                    # start_time = time.time()
                 #     entry = pd.DataFrame([x[objectNum], y[objectNum],z[objectNum],velocity[objectNum]],
                 #    columns = ['X','Y','Z','Velocity'])
             
@@ -314,10 +316,16 @@ while True:
             # Store the current frame into frameData
             frameData[currentIndex] = detObj
             currentIndex += 1
-        
+
+            if((time.time() - start_time) > 1.5):
+                if(count < 10):
+                    testData.to_csv("Data_{0}.csv".format(count))
+                    #Reset Data frame
+                    testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+                    count+=1
+                start_time = time.time()
     # Stop the program and close everything if Ctrl + c is pressed
     except KeyboardInterrupt:
-        testData.to_csv("Data.csv")
         CLIport.write(('sensorStop\n').encode())
         CLIport.close()
         Dataport.close()
