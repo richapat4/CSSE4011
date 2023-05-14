@@ -220,10 +220,3 @@ def normal_plot():
 # plot_PCA()
 normal_plot()
 
-
-
-
-        # ax.scatter(center_points['X'], center_points['Y'], center_points['Z'], c='red', marker='x', 
-        #            label='Cluster Centers')
-
-        # scatter = ax.scatter(x, y,c='b', marker='o')
