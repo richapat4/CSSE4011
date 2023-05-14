@@ -7,7 +7,7 @@ import pandas as pd
 duration = 2
 start_time = 0
 # Change the configuration file name
-configFileName = 'test_4_removed_range_peak_grouping.cfg'
+configFileName = 'test_2_best_velocity_res_5m.cfg'
 count = 0
 CLIport = {}
 Dataport = {}
