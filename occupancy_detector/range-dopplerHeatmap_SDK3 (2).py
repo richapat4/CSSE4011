@@ -4,6 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+import influxdb_client, os, time
+from influxdb_client import InfluxDBClient, Point, WritePrecision, WriteOptions
+from influxdb_client.client.write_api import SYNCHRONOUS
+from flightsql import FlightSQLClient
+
+from datetime import datetime
+
+
+# Grafana http://localhost:3000/
+# influxdb http://localhost:8086/
+
 # ------------------------------------------------------------------
 
 # Function to configure the serial ports and send the data from
@@ -226,7 +237,7 @@ def readAndParseData18xx(Dataport, configParameters):
 
                     # if((time.time() - start_time) > 1):
                     # Store another value within testData. This will only store a max of ten values
-                    if(count < MAX_COUNT):
+                    if(count < MAX_CSVS):
                         entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
                         testData.loc[len(testData)] = entry
                         print(testData)
@@ -289,10 +300,22 @@ def readAndParseData18xx(Dataport, configParameters):
 
 if __name__=="__main__":
 
-    MAX_COUNT = 10
+    MAX_CSVS = 10
+    WRITE_GAP = 1
+
+    token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
+    org = "csse4011"
+    url = "http://localhost:8086"
+
+    bucket="Demo_data"
+
+    write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org, debug=False)
+
+    write_api = write_client.write_api(write_options=SYNCHRONOUS)
 
     duration = 2
-    start_time = 0
+    start_time_csv = 0
+    start_time_db = 0
     # Change the configuration file name
     configFileName = 'test_2_best_velocity_res_5m.cfg'
     count = 0
@@ -334,14 +357,27 @@ if __name__=="__main__":
                 currentIndex += 1
 
                 # Does the writing every 1.5 seconds
-                if((time.time() - start_time) > 1.5):
+                if((time.time() - start_time) > WRITE_GAP):
 
-                    if(count < MAX_COUNT):
+                    if(count < MAX_CSVS):
                         # Richa has this for testing purposes; can eventually remove
                         testData.to_csv("David_testing_csvs/Data_{0}.csv".format(count))
                         #Reset Data frame
                         testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         count+=1
+
+
+                    # This is where we write the field positioning over to influxdb
+                    # This is only going to be useful once we have clustering algorithms
+                    # point = (
+                    #     Point("Position")
+                    #     .field("X", 0)
+                    #     .field("Y", 0)
+                    #     .field("Z", 0)
+                    #     .field("Velocity", 1)
+                    #     )
+                    # write_api.write(bucket=bucket, org="csse4011", record=point)
+
                     start_time = time.time()
 
         # Stop the program and close everything if Ctrl + c is pressed
