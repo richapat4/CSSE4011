@@ -4,40 +4,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-duration = 2
-start_time = 0
-# Change the configuration file name
-configFileName = 'test_2_best_velocity_res_5m.cfg'
-count = 0
-CLIport = {}
-Dataport = {}
-byteBuffer = np.zeros(2**15,dtype = 'uint8')
-byteBufferLength = 0
-
-#  = pd.DataFrame(columns = ['X', 'Y','Z','Velocity'])
-testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
-# testData = pd.DataFrame([0,0,0,0],columns = ['X', 'Y','Z','Velocity'])
-
-
 # ------------------------------------------------------------------
 
 # Function to configure the serial ports and send the data from
 # the configuration file to the radar
 def serialConfig(configFileName):
-    
-    global CLIport
-    global Dataport
+    global CLIport, Dataport
+
     # Open the serial ports for the configuration and the data ports
+
+    # Note which system we're using. 
+    # David: Linux
+    # Richa: Windows
     
-    # Raspberry pi
-    #CLIport = serial.Serial('/dev/ttyACM0', 115200)
-    #Dataport = serial.Serial('/dev/ttyACM1', 921600)
+    # Linux
+    CLIport = serial.Serial('/dev/ttyACM0', 115200)
+    Dataport = serial.Serial('/dev/ttyACM1', 921600)
     
     # Windows
-    CLIport = serial.Serial('COM14', 115200)
-    Dataport = serial.Serial('COM15', 921600)
+    # CLIport = serial.Serial('COM14', 115200)
+    # Dataport = serial.Serial('COM15', 921600)
 
     # Read the configuration file and send it to the board
+    # This will boot the board into the mode that it needs to run
     config = [line.rstrip('\r\n') for line in open(configFileName)]
     for i in config:
         CLIport.write((i+'\n').encode())
@@ -60,10 +49,12 @@ def parseConfigFile(configFileName):
         splitWords = i.split(" ")
         
         # Hard code the number of antennas, change if other configuration is used
+        # We don't have to change this; that's the number for AWR1843Boost
         numRxAnt = 4
         numTxAnt = 3
         
         # Get the information about the profile configuration
+        # Don't need to worry about this; happens automatically, and is tweaked via changing the .cfg
         if "profileCfg" in splitWords[0]:
             startFreq = int(float(splitWords[2]))
             idleTime = int(splitWords[3])
@@ -77,7 +68,8 @@ def parseConfigFile(configFileName):
                 
             digOutSampleRate = int(splitWords[11])
             
-        # Get the information about the frame configuration    
+        # Get the information about the frame configuration  
+        # Same here; don't have to worry about it  
         elif "frameCfg" in splitWords[0]:
             
             chirpStartIdx = int(splitWords[1])
@@ -102,8 +94,9 @@ def parseConfigFile(configFileName):
 # ------------------------------------------------------------------
 
 # Funtion to read and parse the incoming data
+# Kinda disgusting parsing, but it works and doesn't require any updating so all good!!!
 def readAndParseData18xx(Dataport, configParameters):
-    global byteBuffer, byteBufferLength
+    global byteBufferLength, byteBuffer
     
     # Constants
     OBJ_STRUCT_SIZE_BYTES = 12
@@ -232,7 +225,8 @@ def readAndParseData18xx(Dataport, configParameters):
                     idX += 4
 
                     # if((time.time() - start_time) > 1):
-                    if(count < 10):
+                    # Store another value within testData. This will only store a max of ten values
+                    if(count < MAX_COUNT):
                         entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
                         testData.loc[len(testData)] = entry
                         print(testData)
@@ -274,15 +268,11 @@ def readAndParseData18xx(Dataport, configParameters):
                 fig.colorbar(cs, shrink=0.9)
                 fig.canvas.draw()
                 plt.pause(0.1)
-            
-                
-                
  
         # Remove already processed data
         if idX > 0 and byteBufferLength>idX:
             shiftSize = totalPacketLen
-            
-                
+                      
             byteBuffer[:byteBufferLength - shiftSize] = byteBuffer[shiftSize:byteBufferLength]
             byteBuffer[byteBufferLength - shiftSize:] = np.zeros(len(byteBuffer[byteBufferLength - shiftSize:]),dtype = 'uint8')
             byteBufferLength = byteBufferLength - shiftSize
@@ -295,42 +285,72 @@ def readAndParseData18xx(Dataport, configParameters):
 
 # -------------------------    MAIN   -----------------------------------------  
 
-# Configurate the serial port
-CLIport, Dataport = serialConfig(configFileName)
+# Don't know who taught these guys about code style. But hey.
 
-# Get the configuration parameters from the configuration file
-configParameters = parseConfigFile(configFileName)
+if __name__=="__main__":
 
-start_time = time.time()
+    MAX_COUNT = 10
 
-# Main loop 
-detObj = {}  
-frameData = {}    
-currentIndex = 0
-fig = plt.figure()
-while True:
-    try:
-        dataOk, frameNumber, detObj = readAndParseData18xx(Dataport, configParameters)
-        # print(detObj)
-        if dataOk:
-            # Store the current frame into frameData
-            frameData[currentIndex] = detObj
-            currentIndex += 1
+    duration = 2
+    start_time = 0
+    # Change the configuration file name
+    configFileName = 'test_2_best_velocity_res_5m.cfg'
+    count = 0
 
-            if((time.time() - start_time) > 1.5):
-                if(count < 10):
-                    testData.to_csv("Data_{0}.csv".format(count))
-                    #Reset Data frame
-                    testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
-                    count+=1
-                start_time = time.time()
-    # Stop the program and close everything if Ctrl + c is pressed
-    except KeyboardInterrupt:
-        CLIport.write(('sensorStop\n').encode())
-        CLIport.close()
-        Dataport.close()
-        break
-        
+    # RX buffers in dictionary format
+    CLIport = {}
+    Dataport = {}
+
+    # Input buffers for reading into port dicts
+    byteBuffer = np.zeros(2**15,dtype = 'uint8')
+    byteBufferLength = 0
+
+    #  = pd.DataFrame(columns = ['X', 'Y','Z','Velocity'])
+    testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+    # testData = pd.DataFrame([0,0,0,0],columns = ['X', 'Y','Z','Velocity'])
+
+    # Configurate the serial port
+    CLIport, Dataport = serialConfig(configFileName)
+
+    # Get the configuration parameters from the configuration file
+    configParameters = parseConfigFile(configFileName)
+
+    start_time = time.time()
+
+    # Main loop 
+    detObj = {}  
+    frameData = {}    
+    currentIndex = 0
+    fig = plt.figure()
+
+    # So this is all well and good. Just have to figure out where all the outputs go now
+    while True:
+        try:
+            dataOk, frameNumber, detObj = readAndParseData18xx(Dataport, configParameters)
+            # print(detObj)
+            if dataOk:
+                # Store the current frame into frameData
+                frameData[currentIndex] = detObj
+                currentIndex += 1
+
+                # Does the writing every 1.5 seconds
+                if((time.time() - start_time) > 1.5):
+
+                    if(count < MAX_COUNT):
+                        # Richa has this for testing purposes; can eventually remove
+                        testData.to_csv("David_testing_csvs/Data_{0}.csv".format(count))
+                        #Reset Data frame
+                        testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+                        count+=1
+                    start_time = time.time()
+
+        # Stop the program and close everything if Ctrl + c is pressed
+        except KeyboardInterrupt:
+            CLIport.write(('sensorStop\n').encode())
+            CLIport.close()
+            Dataport.close()
+            break
+            
     
 
 
