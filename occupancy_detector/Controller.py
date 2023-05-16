@@ -4,6 +4,8 @@ import threading
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import signal
+import sys
 
 import influxdb_client, os, time
 from influxdb_client import InfluxDBClient, Point, WritePrecision, WriteOptions
@@ -22,6 +24,15 @@ WRITE_GAP = 1
 # influxdb http://localhost:8086/
 
 # ------------------------------------------------------------------
+
+def sig_handler(signal, frame):
+
+    if interface.cli_port is not None and interface.data_port is not None:
+        interface.cli_port.write(('sensorStop\n').encode())
+        interface.cli_port.close()
+        interface.data_port.close()
+
+    sys.exit(0)
 
 class Controller:
 
@@ -56,12 +67,15 @@ class Controller:
 
         self.duration = 2
         # Change the configuration file name
-        configFileName = 'test_4_removed_range_peak_grouping.cfg'
+        configFileName = 'occupancy_detector\\test_4_removed_range_peak_grouping.cfg'
         self.count = 0
 
         # Input buffers for reading into port dicts
         self.byte_buffer = np.zeros(2**15,dtype = 'uint8')
         self.byte_buffer_len = 0
+
+        self.cluster_points = None
+        self.separated_clusters = None
 
         #  = pd.DataFrame(columns = ['X', 'Y','Z','Velocity'])
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
@@ -81,10 +95,31 @@ class Controller:
         self.currentIndex = 0
         self.fig = plt.figure()
 
+        # self.view = View(self)
+
+        signal.signal(signal.SIGINT, self.sig_handler)
+
         thread = threading.Thread(target=self.main_loop)
+        # thread.daemon = True
         thread.start()
 
-        self.view = View(self)
+        # while True:
+        #     continue
+
+        # thread_animate = threading.Thread(target=self.view.animate)
+       
+        # thread_animate.start()
+
+
+    # Signal handler to kill entire system
+    def sig_handler(self, signal, frame):
+
+        if self.cli_port is not None and self.data_port is not None:
+            self.cli_port.write(('sensorStop\n').encode())
+            self.cli_port.close()
+            self.data_port.close()
+
+        sys.exit(0)
 
     
     def main_loop(self):
@@ -103,12 +138,14 @@ class Controller:
                         # For some reason this csv writing is breaking the system???
                         
                         # if(self.count < MAX_CSVS):
+
                         #     # Richa has this for testing purposes; can eventually remove
                         #     self.testData.to_csv("David_testing_csvs/Data_{0}.csv".format(self.count))
                         #     #Reset Data frame
                         #     self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         #     self.count+=1
-                            #                     # write_api.write(bucket=bucket, org="csse4011", record=point)
+
+                            # write_api.write(bucket=bucket, org="csse4011", record=point)
                             # self.testData.to_csv('Data_{0}.csv'.format(self.count))
                             # self.cluster_points.to_csv('center_{0}.csv'.format(self.count))
                             # self.separated_clusters.to_csv('clusters{0}.csv'.format(self.count))
@@ -121,7 +158,7 @@ class Controller:
                         # print(testDataNew)
 
                         # print("clusters")
-                        print(self.cluster_points)
+                        # print(self.cluster_points)
 
                         # print("separated_clusters")
                         # print(self.separated_clusters)
@@ -149,7 +186,7 @@ class Controller:
                 self.cli_port.write(('sensorStop\n').encode())
                 self.cli_port.close()
                 self.data_port.close()
-                self.view.destroy()
+                # self.view.destroy()
                 break
                 
 
@@ -165,38 +202,41 @@ class Controller:
 
     # Apply clustering algorithm
     def clustering(self, testData):
-
-        center_points = pd.DataFrame({"X":[0],"Y":[0],"Z":[0], "label":[1],"Velocity":[0]})
-
-        # Create a db clustering algorithm
-        db = DBSCAN(eps=0.8, min_samples=20).fit(testData)
-        labels = db.labels_ 
-
-        # What shape is the dictionary in that allows it to be accessed this way?
-        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-        n_noise_ = list(labels).count(-1)
-        # center_points = []
-
-        separated_cluster = []
         center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
-
-        for cluster_label in range(n_clusters_):
-
-            # Iterate through, assign each point to a cluster and find the centre point of each
-            cluster_points = testData[labels == cluster_label]
-            cluster_points = cluster_points.assign(cluster_num=cluster_label)
-            separated_cluster.append(cluster_points)
-
-            center_point = np.mean(cluster_points, axis=0)
-            print("Centre")
-            print(center_point)
-            entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
-            # center_points.append(center_point)
-            center_df.loc[len(center_df)] = entry
+        center_points = pd.DataFrame({"X":[0],"Y":[0],"Z":[0], "label":[1],"Velocity":[0]})
+        separated_cluster = []
             
-        print("Estimated number of clusters: %d" % n_clusters_)
-        print("Estimated number of noise points: %d" % n_noise_) 
+        if(len(testData) > 0):
+            # Create a db clustering algorithm
+            db = DBSCAN(eps=0.8, min_samples=20).fit(testData)
+            labels = db.labels_ 
+
+            # What shape is the dictionary in that allows it to be accessed this way?
+            n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+            n_noise_ = list(labels).count(-1)
+            # center_points = []
+
+            separated_cluster = []
+            center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
+
+            for cluster_label in range(n_clusters_):
+
+                # Iterate through, assign each point to a cluster and find the centre point of each
+                cluster_points = testData[labels == cluster_label]
+                cluster_points = cluster_points.assign(cluster_num=cluster_label)
+                separated_cluster.append(cluster_points)
+
+                center_point = np.mean(cluster_points, axis=0)
+                # print("Centre")
+                # print(center_point)
+                entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
+                # center_points.append(center_point)
+                center_df.loc[len(center_df)] = entry
             
+
+            # print("Estimated number of clusters: %d" % n_clusters_)
+            # print("Estimated number of noise points: %d" % n_noise_) 
+                
         center_df = center_df.drop(center_df.index[0])
 
         return center_df, separated_cluster
@@ -403,9 +443,11 @@ class Controller:
 
                         # if((time.time() - start_time) > 1):
                         # Store another value within testData. This will only store a max of ten values
-                        if(self.count < MAX_CSVS):
-                            entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
-                            self.testData.loc[len(self.testData)] = entry
+                        # if(self.count < MAX_CSVS):
+
+                        entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
+                        self.testData.loc[len(self.testData)] = entry
+
                             # print(self.testData)
                         # count+=1
                         # start_time = time.time()
@@ -468,8 +510,11 @@ class Controller:
 Engage in the main loop
 """
 if __name__ == "__main__":
+
+    signal.signal(signal.SIGINT, sig_handler)
+
     interface = Controller()
-    interface.view.mainloop()
+    # interface.view.mainloop()
             
     
 

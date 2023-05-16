@@ -33,59 +33,73 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 import numpy.linalg as LA
 from mpl_toolkits.mplot3d import Axes3D
 
-import Controller
+import matplotlib.animation as animation
+
 """
 View controls the GUI that the user sees
 """
 
 
-class View(tk.Tk):
+class View():
 
     """
     Initialise the many variables that are required for user interface
     """
     def __init__(self, controller):
 
-        super().__init__()
+        # super().__init__()
         self.controller = controller
-        self.geometry('1000x750')
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111, projection='3d')
 
-        self.title('CSSE4011 Interface')
-        self.main_frame = tk.Frame(self)
-        self.main_frame.pack()
+        self.scatter = self.ax.scatter([0],[0],[0])
+        plt.show()
+        
+        self.ax.set_xlabel('X')
+        self.ax.set_xlim([-2.5, 2.5])
+        self.ax.set_ylabel('Y')
+        self.ax.set_ylim([0, 5])
+        self.ax.set_zlabel('Z')
+        self.ax.set_zlim([-1.5, 3.5])
 
-        self.thread_plot()
+        # self.geometry('1000x750')
 
-    def draw3DRectangle(self, ax, x1, y1, z1, x2, y2, z2):
+        # self.title('CSSE4011 Interface')
+        # self.main_frame = tk.Frame(self)
+        # self.main_frame.pack()
+
+       
+
+    def draw3DRectangle(self,x1, y1, z1, x2, y2, z2):
         # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
-        ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
-        ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->
-        ax.plot([x2, x1], [y2, y2], [z1, z1], color='b')  # | (down)
-        ax.plot([x1, x1], [y2, y1], [z1, z1], color='b')  # <--
+        self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
+        self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->
+        self.ax.plot([x2, x1], [y2, y2], [z1, z1], color='b')  # | (down)
+        self.ax.plot([x1, x1], [y2, y1], [z1, z1], color='b')  # <--
 
-        ax.plot([x1, x2], [y1, y1], [z2, z2], color='b')  # | (up)
-        ax.plot([x2, x2], [y1, y2], [z2, z2], color='b')  # -->
-        ax.plot([x2, x1], [y2, y2], [z2, z2], color='b')  # | (down)
-        ax.plot([x1, x1], [y2, y1], [z2, z2], color='b')  # <--
+        self.ax.plot([x1, x2], [y1, y1], [z2, z2], color='b')  # | (up)
+        self.ax.plot([x2, x2], [y1, y2], [z2, z2], color='b')  # -->
+        self.ax.plot([x2, x1], [y2, y2], [z2, z2], color='b')  # | (down)
+        self.ax.plot([x1, x1], [y2, y1], [z2, z2], color='b')  # <--
 
-        ax.plot([x1, x1], [y1, y1], [z1, z2], color='b')  # | (up)
-        ax.plot([x2, x2], [y2, y2], [z1, z2], color='b')  # -->
-        ax.plot([x1, x1], [y2, y2], [z1, z2], color='b')  # | (down)
-        ax.plot([x2, x2], [y1, y1], [z1, z2], color='b')  # <--
+        self.ax.plot([x1, x1], [y1, y1], [z1, z2], color='b')  # | (up)
+        self.ax.plot([x2, x2], [y2, y2], [z1, z2], color='b')  # -->
+        self.ax.plot([x1, x1], [y2, y2], [z1, z2], color='b')  # | (down)
+        self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b')  # <--
 
     """
     Creates thread to plot data
     """
-    def thread_plot(self):
+    def thread_plot(self,frame):
 
-        while(1):
-            separated_clusters = self.controller.separated_clusters
-            centre_points = self.controller.cluster_points
+        # while(1)
+        separated_clusters = self.controller.separated_clusters
+        centre_points = self.controller.cluster_points
 
-            print(separated_clusters)
+        if separated_clusters is not None and centre_points is not None:
             
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
+            print(separated_clusters)
+        
             
             #### Do all the plotting
             for cluster in separated_clusters:
@@ -102,17 +116,25 @@ class View(tk.Tk):
                     data[1, :]), np.max(data[1, :]), np.min(data[2, :]), np.max(
                     data[2, :])
 
-                ax.scatter(data[0, :], data[1, :], data[2, :], label="centered data")
+                self.scatter._offsets3D(data[0, :], data[1, :], data[2, :], label="centered data")
 
-                ax.set_xlabel('X')
-                ax.set_xlim([-2.5, 2.5])
-                ax.set_ylabel('Y')
-                ax.set_ylim([0, 5])
-                ax.set_zlabel('Z')
-                ax.set_zlim([-1.5, 3.5])
 
-                ax.legend()
+                # self.draw3DRectangle(xmin, ymin, zmin, xmax, ymax, zmax)
+                self.ax.set_title("Frame{}".format(frame))
 
-                self.draw3DRectangle(plt, xmin, ymin, zmin, xmax, ymax, zmax)
+        return self.scatter
+            
 
-            plt.show()
+
+    def animate(self):
+        ani = animation.FuncAnimation(self.fig,self.thread_plot, interval = 1000, cache_frame_data=False)
+        plt.show()
+
+        # except KeyboardInterrupt:
+        #     # self.cli_port.write(('sensorStop\n').encode())
+        #     # self.cli_port.close()
+        #     # self.data_port.close()
+        #     # self.view.destroy()
+        #     break
+
+
