@@ -12,6 +12,7 @@ from flightsql import FlightSQLClient
 
 from datetime import datetime
 from View import View
+from sklearn.cluster import DBSCAN
 
 MAX_CSVS = 10
 WRITE_GAP = 1
@@ -110,15 +111,23 @@ class Controller:
                         #     self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         #     self.count+=1
 
-
-
                         # Implement data cleaning algorithm here
-
-
+                        testDataNew = self.data_cleaning(self.testData.copy())
 
                         # Implement DB clustering algorithm here
+                        self.cluster_points, self.separated_clusters = self.clustering(testDataNew)
 
 
+                        # print(testDataNew)
+
+
+                        print("clusters")
+                        print(self.cluster_points)
+
+                        print("separated_clusters")
+                        print(self.separated_clusters)
+
+                    
 
                         # This is where we write the field positioning over to influxdb
                         # This is only going to be useful once we have clustering algorithms
@@ -147,6 +156,55 @@ class Controller:
                 break
                 
 
+    # Data cleaning algorithm for applying filters, etc.
+    def data_cleaning(self, testData):
+        testData = testData.drop(testData.index[0])
+
+        testData = testData.loc[:, 'X':'Z']
+
+
+        return testData
+    
+
+    # Apply clustering algorithm
+    def clustering(self, testData):
+
+        center_points = pd.DataFrame({"X":[0],"Y":[0],"Z":[0], "label":[1],"Velocity":[0]})
+
+        # Create a db clustering algorithm
+        db = DBSCAN(eps=0.8, min_samples=20).fit(testData)
+        labels = db.labels_ 
+
+        # What shape is the dictionary in that allows it to be accessed this way?
+        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+        n_noise_ = list(labels).count(-1)
+        center_points = []
+
+        separated_cluster = []
+        center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
+
+        for cluster_label in range(n_clusters_):
+
+            # Iterate through, assign each point to a cluster and find the centre point of each
+            cluster_points = testData[labels == cluster_label]
+            cluster_points = cluster_points.assign(cluster_num=cluster_label)
+            separated_cluster.append(cluster_points)
+
+            center_point = np.mean(cluster_points, axis=0)
+            print(center_point)
+            # entry = pd.Series({'X':center_point[:,0], 'Y':center_point[:,1], 'Z':center_point[:,2], 'label':cluster_label})
+            # center_points.append(center_point)
+            # center_df.loc[len(center_df)] = entry
+
+            center_points = center_points
+            
+
+        print("Estimated number of clusters: %d" % n_clusters_)
+        print("Estimated number of noise points: %d" % n_noise_) 
+            
+        center_df = center_df.drop(center_df.index[0])
+
+        return center_df, separated_cluster
 
 
     # Function to configure the serial ports and send the data from
