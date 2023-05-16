@@ -1,5 +1,6 @@
 import serial
 import time
+import threading
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -79,10 +80,10 @@ class Controller:
         self.currentIndex = 0
         self.fig = plt.figure()
 
-        self.main_loop()
+        thread = threading.Thread(target=self.main_loop)
+        thread.start()
 
-
-        # self.view = View(self)
+        self.view = View(self)
 
     
     def main_loop(self):
@@ -99,12 +100,24 @@ class Controller:
                     # Does the writing every 1.5 seconds
                     if((time.time() - self.start_time) > WRITE_GAP):
 
-                        if(self.count < MAX_CSVS):
-                            # Richa has this for testing purposes; can eventually remove
-                            self.testData.to_csv("David_testing_csvs/Data_{0}.csv".format(self.count))
-                            #Reset Data frame
-                            self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
-                            self.count+=1
+
+                        # For some reason this csv writing is breaking the system???
+                        
+                        # if(self.count < MAX_CSVS):
+                        #     # Richa has this for testing purposes; can eventually remove
+                        #     self.testData.to_csv("David_testing_csvs/Data_{0}.csv".format(self.count))
+                        #     #Reset Data frame
+                        #     self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+                        #     self.count+=1
+
+
+
+                        # Implement data cleaning algorithm here
+
+
+
+                        # Implement DB clustering algorithm here
+
 
 
                         # This is where we write the field positioning over to influxdb
@@ -118,14 +131,21 @@ class Controller:
                         #     )
                         # write_api.write(bucket=bucket, org="csse4011", record=point)
 
+                        self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+                        print("evaluation done")
+
                         self.start_time = time.time()
+
+                      
 
             # Stop the program and close everything if Ctrl + c is pressed
             except KeyboardInterrupt:
                 self.cli_port.write(('sensorStop\n').encode())
                 self.cli_port.close()
                 self.data_port.close()
+                self.view.destroy()
                 break
+                
 
 
 
@@ -333,7 +353,7 @@ class Controller:
                         if(self.count < MAX_CSVS):
                             entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
                             self.testData.loc[len(self.testData)] = entry
-                            print(self.testData)
+                            # print(self.testData)
                         # count+=1
                         # start_time = time.time()
                     #     entry = pd.DataFrame([x[objectNum], y[objectNum],z[objectNum],velocity[objectNum]],
@@ -396,7 +416,7 @@ Engage in the main loop
 """
 if __name__ == "__main__":
     interface = Controller()
-    # interface.view.mainloop()
+    interface.view.mainloop()
             
     
 
