@@ -9,9 +9,9 @@ import influxdb_client, os, time
 from influxdb_client import InfluxDBClient, Point, WritePrecision, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
 from flightsql import FlightSQLClient
-
+ 
 from datetime import datetime
-from View import View
+from View2 import View
 from sklearn.cluster import DBSCAN
 
 MAX_CSVS = 10
@@ -37,12 +37,12 @@ class Controller:
         # Richa: Windows
         
         # Linux
-        self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
-        self.data_port = serial.Serial('/dev/ttyACM1', 921600)
+        # self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
+        # self.data_port = serial.Serial('/dev/ttyACM1', 921600)
         
         # Windows
-        # self.cli_port = serial.Serial('COM14', 115200)
-        # self.data_port = serial.Serial('COM15', 921600)
+        self.cli_port = serial.Serial('COM14', 115200)
+        self.data_port = serial.Serial('COM15', 921600)
 
         token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
         org = "csse4011"
@@ -56,7 +56,7 @@ class Controller:
 
         self.duration = 2
         # Change the configuration file name
-        configFileName = 'test_2_best_velocity_res_5m.cfg'
+        configFileName = 'test_4_removed_range_peak_grouping.cfg'
         self.count = 0
 
         # Input buffers for reading into port dicts
@@ -100,8 +100,6 @@ class Controller:
 
                     # Does the writing every 1.5 seconds
                     if((time.time() - self.start_time) > WRITE_GAP):
-
-
                         # For some reason this csv writing is breaking the system???
                         
                         # if(self.count < MAX_CSVS):
@@ -110,23 +108,23 @@ class Controller:
                         #     #Reset Data frame
                         #     self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         #     self.count+=1
+                            #                     # write_api.write(bucket=bucket, org="csse4011", record=point)
+                            # self.testData.to_csv('Data_{0}.csv'.format(self.count))
+                            # self.cluster_points.to_csv('center_{0}.csv'.format(self.count))
+                            # self.separated_clusters.to_csv('clusters{0}.csv'.format(self.count))
 
                         # Implement data cleaning algorithm here
                         testDataNew = self.data_cleaning(self.testData.copy())
 
                         # Implement DB clustering algorithm here
                         self.cluster_points, self.separated_clusters = self.clustering(testDataNew)
-
-
                         # print(testDataNew)
 
-
-                        print("clusters")
+                        # print("clusters")
                         print(self.cluster_points)
 
-                        print("separated_clusters")
-                        print(self.separated_clusters)
-
+                        # print("separated_clusters")
+                        # print(self.separated_clusters)
                     
 
                         # This is where we write the field positioning over to influxdb
@@ -138,11 +136,10 @@ class Controller:
                         #     .field("Z", 0)
                         #     .field("Velocity", 1)
                         #     )
-                        # write_api.write(bucket=bucket, org="csse4011", record=point)
 
                         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         print("evaluation done")
-
+                        self.count+=1
                         self.start_time = time.time()
 
                       
@@ -178,7 +175,7 @@ class Controller:
         # What shape is the dictionary in that allows it to be accessed this way?
         n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
         n_noise_ = list(labels).count(-1)
-        center_points = []
+        # center_points = []
 
         separated_cluster = []
         center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
@@ -191,14 +188,12 @@ class Controller:
             separated_cluster.append(cluster_points)
 
             center_point = np.mean(cluster_points, axis=0)
+            print("Centre")
             print(center_point)
-            # entry = pd.Series({'X':center_point[:,0], 'Y':center_point[:,1], 'Z':center_point[:,2], 'label':cluster_label})
+            entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
             # center_points.append(center_point)
-            # center_df.loc[len(center_df)] = entry
-
-            center_points = center_points
+            center_df.loc[len(center_df)] = entry
             
-
         print("Estimated number of clusters: %d" % n_clusters_)
         print("Estimated number of noise points: %d" % n_noise_) 
             
