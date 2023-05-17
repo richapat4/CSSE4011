@@ -36,6 +36,31 @@ def sig_handler(signal, frame):
 
     sys.exit(0)
 
+class Box:
+
+    def __init__(self,x1, y1, z1, x2, y2, z2, ax):
+        self.ax = ax
+        self.line1 = self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
+
+        self.line2 = self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->
+        self.line3 = self.ax.plot([x2, x1], [y2, y2], [z1, z1], color='b')  # | (down)
+        self.line4 = self.ax.plot([x1, x1], [y2, y1], [z1, z1], color='b')  # <--
+
+        self.line5 = self.ax.plot([x1, x2], [y1, y1], [z2, z2], color='b')  # | (up)
+        self.line6 = self.ax.plot([x2, x2], [y1, y2], [z2, z2], color='b')  # -->
+        self.line7 = self.ax.plot([x2, x1], [y2, y2], [z2, z2], color='b')  # | (down)
+        self.line8 = self.ax.plot([x1, x1], [y2, y1], [z2, z2], color='b')  # <--
+
+        self.line9 = self.ax.plot([x1, x1], [y1, y1], [z1, z2], color='b')  # | (up)
+        self.line10 = self.ax.plot([x2, x2], [y2, y2], [z1, z2], color='b')  # -->
+        self.line11 = self.ax.plot([x1, x1], [y2, y2], [z1, z2], color='b')  # | (down)
+        self.line12 = self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b')  # <--
+    
+    def return_lines(self):
+        return [self.line1, self.line2, self.line3, self.line4, self.line5, self.line6, self.line7, self.line8, self.line9, self.line10, self.line11, self.line12,]
+
+
+
 class Controller:
 
     """
@@ -50,12 +75,12 @@ class Controller:
         # Richa: Windows
         
         # Linux
-        # self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
-        # self.data_port = serial.Serial('/dev/ttyACM1', 921600)
+        self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
+        self.data_port = serial.Serial('/dev/ttyACM1', 921600)
         
         # Windows
-        self.cli_port = serial.Serial('COM14', 115200)
-        self.data_port = serial.Serial('COM15', 921600)
+        # self.cli_port = serial.Serial('COM14', 115200)
+        # self.data_port = serial.Serial('COM15', 921600)
 
         token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
         org = "csse4011"
@@ -69,7 +94,7 @@ class Controller:
 
         self.duration = 2
         # Change the configuration file name
-        configFileName = 'occupancy_detector\\test_4_removed_range_peak_grouping.cfg'
+        configFileName = 'occupancy_detector/test_4_removed_range_peak_grouping.cfg'
         self.count = 0
 
         # Input buffers for reading into port dicts
@@ -78,6 +103,7 @@ class Controller:
 
         self.cluster_points = []
         self.separated_clusters = []
+        self.total_lines = []
 
         #  = pd.DataFrame(columns = ['X', 'Y','Z','Velocity'])
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
@@ -133,21 +159,21 @@ class Controller:
 
     def draw3DRectangle_once(self,x1, y1, z1, x2, y2, z2):
         # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
-        self.line1, = self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
+        self.line1 = self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
 
-        self.line2, = self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->
-        self.line3, = self.ax.plot([x2, x1], [y2, y2], [z1, z1], color='b')  # | (down)
-        self.line4, = self.ax.plot([x1, x1], [y2, y1], [z1, z1], color='b')  # <--
+        self.line2 = self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->
+        self.line3 = self.ax.plot([x2, x1], [y2, y2], [z1, z1], color='b')  # | (down)
+        self.line4 = self.ax.plot([x1, x1], [y2, y1], [z1, z1], color='b')  # <--
 
-        self.line5, = self.ax.plot([x1, x2], [y1, y1], [z2, z2], color='b')  # | (up)
-        self.line6, = self.ax.plot([x2, x2], [y1, y2], [z2, z2], color='b')  # -->
-        self.line7, = self.ax.plot([x2, x1], [y2, y2], [z2, z2], color='b')  # | (down)
-        self.line8, = self.ax.plot([x1, x1], [y2, y1], [z2, z2], color='b')  # <--
+        self.line5 = self.ax.plot([x1, x2], [y1, y1], [z2, z2], color='b')  # | (up)
+        self.line6 = self.ax.plot([x2, x2], [y1, y2], [z2, z2], color='b')  # -->
+        self.line7 = self.ax.plot([x2, x1], [y2, y2], [z2, z2], color='b')  # | (down)
+        self.line8 = self.ax.plot([x1, x1], [y2, y1], [z2, z2], color='b')  # <--
 
-        self.line9, = self.ax.plot([x1, x1], [y1, y1], [z1, z2], color='b')  # | (up)
-        self.line10, = self.ax.plot([x2, x2], [y2, y2], [z1, z2], color='b')  # -->
-        self.line11, = self.ax.plot([x1, x1], [y2, y2], [z1, z2], color='b')  # | (down)
-        self.line12, = self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b')  # <--
+        self.line9 = self.ax.plot([x1, x1], [y1, y1], [z1, z2], color='b')  # | (up)
+        self.line10 = self.ax.plot([x2, x2], [y2, y2], [z1, z2], color='b')  # -->
+        self.line11 = self.ax.plot([x1, x1], [y2, y2], [z1, z2], color='b')  # | (down)
+        self.line12 = self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b')  # <--
 
 
     def draw3DRectangle_update(self,x1, y1, z1, x2, y2, z2):
@@ -181,33 +207,46 @@ class Controller:
         
         # print(separated_clusters)
     
+        data_cluster = []
+        data_box = []
+
+        total_scatter = []
+        total_box = []
         
         #### Do all the plotting
+
+        if not separated_clusters.empty:
+            x = separated_clusters['X'].values
+            y = separated_clusters['Y'].values
+            z = separated_clusters['Z'].values
+
+            data = np.vstack([x, y, z])
+
+            self.scatter._offsets3d = (data[0,:], data[1, :], data[2, :])
         
-        for cluster in separated_clusters:
+        # for cluster in separated_clusters:
             
-            if(not cluster.empty):
+        #     if(not cluster.empty):
                 
-                # df = cluster.drop(cluster.index[0])
+        #         # df = cluster.drop(cluster.index[0])
 
-                x = cluster['X'].values
-                y = cluster['Y'].values
-                z = cluster['Z'].values
+        #         x = cluster['X'].values
+        #         y = cluster['Y'].values
+        #         z = cluster['Z'].values
 
-                data = np.vstack([x, y, z])
-                # print(data)
+        #         data = np.vstack([x, y, z])
+        #         # print(data)
 
-                xmin, xmax, ymin, ymax, zmin, zmax = np.min(data[0, :]), np.max(data[0, :]), np.min(
-                    data[1, :]), np.max(data[1, :]), np.min(data[2, :]), np.max(
-                    data[2, :])
+         #         self.scatter._offsets3d = (data[0,:], data[1, :], data[2, :])
 
-                self.scatter._offsets3d = (data[0,:], data[1, :], data[2, :])
+                # total_scatter.append(self.scatter)
+                # total_box.append([self.line1, self.line2, self.line3, self.line4, self.line5, self.line6, self.line7, self.line8, self.line9, self.line10, self.line11,self.line12])
 
-                self.draw3DRectangle_update(xmin, ymin, zmin, xmax, ymax, zmax)
+                # self.ax.set_title("Frame{}".format(frame))
 
-                self.ax.set_title("Frame{}".format(frame))
+        # return self.line1, self.line2, self.line3, self.line4, self.line5, self.line6, self.line7, self.line8, self.line9, self.line10, self.line11,self.line12, self.scatter
 
-        return self.line1, self.line2, self.line3, self.line4, self.line5, self.line6, self.line7, self.line8, self.line9, self.line10, self.line11,self.line12,self.scatter
+        return self.total_lines, self.scatter
 
 
     # Signal handler to kill entire system
@@ -234,30 +273,16 @@ class Controller:
 
                     # Does the writing every 1.5 seconds
                     if((time.time() - self.start_time) > WRITE_GAP):
-                        # For some reason this csv writing is breaking the system???
-                        
-                        # if(self.count < MAX_CSVS):
-
-                        #     # Richa has this for testing purposes; can eventually remove
-                        #     self.testData.to_csv("David_testing_csvs/Data_{0}.csv".format(self.count))
-                        #     #Reset Data frame
-                        #     self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
-                        #     self.count+=1
-
-                            # write_api.write(bucket=bucket, org="csse4011", record=point)
-                            # self.testData.to_csv('Data_{0}.csv'.format(self.count))
-                            # self.cluster_points.to_csv('center_{0}.csv'.format(self.count))
-                            # self.separated_clusters.to_csv('clusters{0}.csv'.format(self.count))
-
+                
                         # Implement data cleaning algorithm here
                         testDataNew = self.data_cleaning(self.testData.copy())
 
                         # Implement DB clustering algorithm here
-                        self.cluster_points, self.separated_clusters = self.clustering(testDataNew)
+                        self.cluster_points, self.separated_clusters, self.total_lines = self.clustering(testDataNew)
                         # print(testDataNew)
 
-                        print("clusters")
-                        print(self.cluster_points)
+                        # print("clusters")
+                        # print(self.cluster_points)
 
                         # print("separated_clusters")
                         # print(self.separated_clusters)
@@ -295,7 +320,6 @@ class Controller:
 
         testData = testData.loc[:, 'X':'Z']
 
-
         return testData
     
 
@@ -318,12 +342,27 @@ class Controller:
             separated_cluster = []
             center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
 
+            total_cluster = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'cluster_num': 0}, index=[0])
+            total_lines = []
+
             for cluster_label in range(n_clusters_):
 
                 # Iterate through, assign each point to a cluster and find the centre point of each
                 cluster_points = testData[labels == cluster_label]
                 cluster_points = cluster_points.assign(cluster_num=cluster_label)
+                # print(cluster_points)
+
+                xmin, xmax, ymin, ymax, zmin, zmax = cluster_points['X'].min(), cluster_points['X'].max(), \
+                        cluster_points['Y'].min(), cluster_points['Y'].max(), \
+                        cluster_points['Z'].min(), cluster_points['Z'].max(), 
+                
+                box = Box(xmin, ymin, zmin, xmax, ymax, zmax, self.ax)
+
+                total_lines = total_lines.extend(box.return_lines())
+
                 separated_cluster.append(cluster_points)
+
+                total_cluster = pd.concat([total_cluster, cluster_points], axis=0)
 
                 center_point = np.mean(cluster_points, axis=0)
                 # print("Centre")
@@ -331,14 +370,17 @@ class Controller:
                 entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
                 # center_points.append(center_point)
                 center_df.loc[len(center_df)] = entry
+                # print("cluster_points_length {0}".format(len(cluster_points)))
             
 
             # print("Estimated number of clusters: %d" % n_clusters_)
+            # print("total_cluster_length {0}".format(len(total_cluster)))
             # print("Estimated number of noise points: %d" % n_noise_) 
                 
         center_df = center_df.drop(center_df.index[0])
+        total_cluster = total_cluster.drop(total_cluster.index[0])
 
-        return center_df, separated_cluster
+        return center_df, total_cluster, total_lines
 
 
     # Function to configure the serial ports and send the data from
@@ -623,7 +665,6 @@ if __name__ == "__main__":
     # interface.view.mainloop()
             
     
-
 
 
 
