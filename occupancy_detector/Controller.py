@@ -62,7 +62,7 @@ class Controller:
         org = "csse4011"
         url = "http://localhost:8086"
 
-        bucket="Demo_data"
+        self.bucket="Demo_data"
 
         self.write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org, debug=False)
 
@@ -218,13 +218,20 @@ class Controller:
 
                         # This is where we write the field positioning over to influxdb
                         # This is only going to be useful once we have clustering algorithms
-                        # point = (
-                        #     Point("Position")
-                        #     .field("X", 0)
-                        #     .field("Y", 0)
-                        #     .field("Z", 0)
-                        #     .field("Velocity", 1)
-                        #     )
+
+                        # print(self.cluster_points)
+
+                        for index, cluster in self.cluster_points.iterrows():
+
+                            point = (
+                                Point("Position")
+                                .field("X", cluster['X'])
+                                .field("Y", cluster['Y'])
+                                .field("Z", cluster['Z'])
+                                .field("cluster_num", cluster['label'])
+                                )
+                            
+                            self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
 
                         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         print("evaluation done")
