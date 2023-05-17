@@ -17,7 +17,6 @@ from View2 import View
 from sklearn.cluster import DBSCAN
 
 import matplotlib.animation as animation
-from matplotlib.artist import Artist
 
 MAX_CSVS = 10
 WRITE_GAP = 1
@@ -79,9 +78,11 @@ class Controller:
 
         self.cluster_points = []
         self.separated_clusters = []
-        self.total_lines = []
+
+        #  = pd.DataFrame(columns = ['X', 'Y','Z','Velocity'])
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
-    
+        # testData = pd.DataFrame([0,0,0,0],columns = ['X', 'Y','Z','Velocity'])
+
         # Configurate the serial port
         self.serialConfig(configFileName)
 
@@ -94,14 +95,9 @@ class Controller:
         self.detObj = {}  
         self.frameData = {}    
         self.currentIndex = 0
-
-        #Plot stuff
         self.fig = plt.figure()
-        self.ax = self.fig.add_subplot(111, projection='3d')
 
-        self.cluster_points = []
-        self.separated_clusters = []
-        self.num_clusters = 0
+        # self.view = View(self)
 
         signal.signal(signal.SIGINT, self.sig_handler)
 
@@ -109,7 +105,15 @@ class Controller:
         thread.daemon = True
         thread.start()
 
-        self.scatter = self.ax.scatter([0],[0],[0])
+
+
+        #Plot stuff
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111, projection='3d')
+
+        data = pd.DataFrame(columns=list('XYZc'))
+        data.loc[0] = [0,0,0,0]
+        self.scatter = self.ax.scatter(data['X'],data['Y'],data['Z'], c=data.c)
         
         self.ax.set_xlabel('X')
         self.ax.set_xlim([-2.5, 2.5])
@@ -117,49 +121,54 @@ class Controller:
         self.ax.set_ylim([0, 5])
         self.ax.set_zlabel('Z')
         self.ax.set_zlim([-1.5, 3.5])
+        self.draw3DRectangle_once(0,0,0,0,0,0)
 
 
-        # Apply clustering algorithm
-    def clustering(self, testData):
+        # while True:
+        #     continue
 
-        center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
-        separated_cluster = []
-        total_cluster = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'cluster_num': 0}, index=[0])
-
-            
-        if(len(testData) > 0):
+        # thread_animate = threading.Thread(target=self.view.animate)
+       
+        # thread_animate.start()
 
 
-            # Create a db clustering algorithm
-            db = DBSCAN(eps=0.8, min_samples=20).fit(testData)
-            labels = db.labels_ 
 
-            # What shape is the dictionary in that allows it to be accessed this way?
-            n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-            n_noise_ = list(labels).count(-1)
+    def draw3DRectangle_once(self,x1, y1, z1, x2, y2, z2):
+        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+        self.line1, = self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
 
-            separated_cluster = []
-            center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
+        self.line2, = self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->
+        self.line3, = self.ax.plot([x2, x1], [y2, y2], [z1, z1], color='b')  # | (down)
+        self.line4, = self.ax.plot([x1, x1], [y2, y1], [z1, z1], color='b')  # <--
 
-            for cluster_label in range(n_clusters_):
+        self.line5, = self.ax.plot([x1, x2], [y1, y1], [z2, z2], color='b')  # | (up)
+        self.line6, = self.ax.plot([x2, x2], [y1, y2], [z2, z2], color='b')  # -->
+        self.line7, = self.ax.plot([x2, x1], [y2, y2], [z2, z2], color='b')  # | (down)
+        self.line8, = self.ax.plot([x1, x1], [y2, y1], [z2, z2], color='b')  # <--
 
-                # Iterate through, assign each point to a cluster and find the centre point of each
-                cluster_points = testData[labels == cluster_label]
-                cluster_points = cluster_points.assign(cluster_num=cluster_label)
+        self.line9, = self.ax.plot([x1, x1], [y1, y1], [z1, z2], color='b')  # | (up)
+        self.line10, = self.ax.plot([x2, x2], [y2, y2], [z1, z2], color='b')  # -->
+        self.line11, = self.ax.plot([x1, x1], [y2, y2], [z1, z2], color='b')  # | (down)
+        self.line12, = self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b')  # <--
 
-                separated_cluster.append(cluster_points)
 
-                total_cluster = pd.concat([total_cluster, cluster_points], axis=0)
+    def draw3DRectangle_update(self,x1, y1, z1, x2, y2, z2):
+        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+        self.line1.set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
 
-                center_point = np.mean(cluster_points, axis=0)
-                entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
-                center_df.loc[len(center_df)] = entry
-            
-            self.num_clusters = n_clusters_
-            self.cluster_points = center_df.drop(center_df.index[0])
-            self.separated_clusters = total_cluster.drop(total_cluster.index[0])
+        self.line2.set_data_3d([x2, x2], [y1, y2], [z1, z1])  # -->
+        self.line3.set_data_3d([x2, x1], [y2, y2], [z1, z1])  # | (down)
+        self.line4.set_data_3d([x1, x1], [y2, y1], [z1, z1])  # <--
 
-      
+        self.line5.set_data_3d([x1, x2], [y1, y1], [z2, z2])  # | (up)
+        self.line6.set_data_3d([x2, x2], [y1, y2], [z2, z2])  # -->
+        self.line7.set_data_3d([x2, x1], [y2, y2], [z2, z2])  # | (down)
+        self.line8.set_data_3d([x1, x1], [y2, y1], [z2, z2])  # <--
+
+        self.line9.set_data_3d([x1, x1], [y1, y1], [z1, z2])  # | (up)
+        self.line10.set_data_3d([x2, x2], [y2, y2], [z1, z2])  # -->
+        self.line11.set_data_3d([x1, x1], [y2, y2], [z1, z2])  # | (down)
+        self.line12.set_data_3d([x2, x2], [y1, y1], [z1, z2])  # <--
 
 
     """
@@ -168,20 +177,65 @@ class Controller:
     def thread_plot(self,frame):
         print("HERE")
 
+        # while(1)
         separated_clusters = self.separated_clusters.copy()
-
-        if not separated_clusters.empty:
-            x = separated_clusters['X'].values
-            y = separated_clusters['Y'].values
-            z = separated_clusters['Z'].values
-
-            data = np.vstack([x, y, z])
-
-            self.scatter._offsets3d = (data[0,:], data[1, :], data[2, :])
+        # centre_points = self.controller.cluster_points
         
-            self.ax.set_title('Number of occupants: {0}'.format(self.num_clusters))
+        # print(separated_clusters)
+    
+        
+        #### Do all the plotting
+        
+        if (len(separated_clusters) >1):
+            combined_clusters = pd.concat([separated_clusters[0], separated_clusters[1]]).reset_index(drop=True)   
+            print("data:")
+            print(combined_clusters)
 
-        return self.scatter
+
+        else:
+            combined_clusters = separated_clusters[0]
+        #if(not separated_clusters.empty):
+            
+            # df = cluster.drop(cluster.index[0])
+
+        x = combined_clusters['X'].values
+        y = combined_clusters['Y'].values
+        z = combined_clusters['Z'].values
+
+        data = np.vstack([x, y, z])
+        # print(data)
+
+        x1, x2, y1, y2, z1, z2 = np.min(data[0, :]), np.max(data[0, :]), np.min(
+            data[1, :]), np.max(data[1, :]), np.min(data[2, :]), np.max(
+            data[2, :])
+
+        self.scatter._offsets3d = (data[0,:], data[1, :], data[2, :])
+
+        for cluster in separated_clusters:
+            
+            self.line1.set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
+            self.line2.set_data_3d([x2, x2], [y1, y2], [z1, z1])  # -->
+            self.line3.set_data_3d([x2, x1], [y2, y2], [z1, z1])  # | (down)
+            self.line4.set_data_3d([x1, x1], [y2, y1], [z1, z1])  # <--
+
+            self.line5.set_data_3d([x1, x2], [y1, y1], [z2, z2])  # | (up)
+            self.line6.set_data_3d([x2, x2], [y1, y2], [z2, z2])  # -->
+            self.line7.set_data_3d([x2, x1], [y2, y2], [z2, z2])  # | (down)
+            self.line8.set_data_3d([x1, x1], [y2, y1], [z2, z2])  # <--
+
+            self.line9.set_data_3d([x1, x1], [y1, y1], [z1, z2])  # | (up)
+            self.line10.set_data_3d([x2, x2], [y2, y2], [z1, z2])  # -->
+            self.line11.set_data_3d([x1, x1], [y2, y2], [z1, z2])  # | (down)
+            self.line12.set_data_3d([x2, x2], [y1, y1], [z1, z2])  # <--
+
+            self.draw3DRectangle_update(xmin, ymin, zmin, xmax, ymax, zmax)
+
+        lines = 
+        df_lines = pd.DataFrame()
+
+        self.ax.set_title("Frame{}".format(frame))
+
+        return self.line1, self.line2, self.line3, self.line4, self.line5, self.line6, self.line7, self.line8, self.line9, self.line10, self.line11,self.line12,self.scatter
 
 
     # Signal handler to kill entire system
@@ -200,6 +254,7 @@ class Controller:
         while True:
             try:
                 dataOk, self.frameNumber, self.detObj = self.readAndParseData18xx(self.data_port, self.configParameters)
+                # print(detObj)
                 if dataOk:
                     # Store the current frame into frameData
                     self.frameData[self.currentIndex] = self.detObj
@@ -208,12 +263,32 @@ class Controller:
                     # Does the writing every 1.5 seconds
                     if((time.time() - self.start_time) > WRITE_GAP):
                         # For some reason this csv writing is breaking the system???
+                        
+                        # if(self.count < MAX_CSVS):
+
+                        #     # Richa has this for testing purposes; can eventually remove
+                        #     self.testData.to_csv("David_testing_csvs/Data_{0}.csv".format(self.count))
+                        #     #Reset Data frame
+                        #     self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+                        #     self.count+=1
+
+                            # write_api.write(bucket=bucket, org="csse4011", record=point)
+                            # self.testData.to_csv('Data_{0}.csv'.format(self.count))
+                            # self.cluster_points.to_csv('center_{0}.csv'.format(self.count))
+                            # self.separated_clusters.to_csv('clusters{0}.csv'.format(self.count))
 
                         # Implement data cleaning algorithm here
                         testDataNew = self.data_cleaning(self.testData.copy())
 
                         # Implement DB clustering algorithm here
-                        self.clustering(testDataNew)
+                        self.cluster_points, self.separated_clusters = self.clustering(testDataNew)
+                        # print(testDataNew)
+
+                        print("clusters")
+                        print(self.cluster_points)
+
+                        # print("separated_clusters")
+                        # print(self.separated_clusters)
                     
 
                         # This is where we write the field positioning over to influxdb
@@ -231,11 +306,14 @@ class Controller:
                         self.count+=1
                         self.start_time = time.time()
 
+                      
+
             # Stop the program and close everything if Ctrl + c is pressed
             except KeyboardInterrupt:
                 self.cli_port.write(('sensorStop\n').encode())
                 self.cli_port.close()
                 self.data_port.close()
+                # self.view.destroy()
                 break
                 
 
@@ -248,6 +326,48 @@ class Controller:
 
         return testData
     
+
+    # Apply clustering algorithm
+    def clustering(self, testData):
+        center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
+        center_points = pd.DataFrame({"X":[0],"Y":[0],"Z":[0], "label":[1],"Velocity":[0]})
+        separated_cluster = []
+            
+        if(len(testData) > 0):
+            # Create a db clustering algorithm
+            db = DBSCAN(eps=0.8, min_samples=20).fit(testData)
+            labels = db.labels_ 
+
+            # What shape is the dictionary in that allows it to be accessed this way?
+            n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+            n_noise_ = list(labels).count(-1)
+            # center_points = []
+
+            separated_cluster = []
+            center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
+
+            for cluster_label in range(n_clusters_):
+
+                # Iterate through, assign each point to a cluster and find the centre point of each
+                cluster_points = testData[labels == cluster_label]
+                cluster_points = cluster_points.assign(c=cluster_label)
+                separated_cluster.append(cluster_points)
+
+                center_point = np.mean(cluster_points, axis=0)
+                # print("Centre")
+                # print(center_point)
+                entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['c']})
+                # center_points.append(center_point)
+                center_df.loc[len(center_df)] = entry
+            
+
+            # print("Estimated number of clusters: %d" % n_clusters_)
+            # print("Estimated number of noise points: %d" % n_noise_) 
+                
+        center_df = center_df.drop(center_df.index[0])
+
+        return center_df, separated_cluster
+
 
     # Function to configure the serial ports and send the data from
     # the configuration file to the radar
@@ -531,7 +651,6 @@ if __name__ == "__main__":
     # interface.view.mainloop()
             
     
-
 
 
 
