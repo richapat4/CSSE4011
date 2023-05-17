@@ -16,6 +16,8 @@ from datetime import datetime
 from View2 import View
 from sklearn.cluster import DBSCAN
 
+import matplotlib.animation as animation
+
 MAX_CSVS = 10
 WRITE_GAP = 1
 
@@ -74,8 +76,8 @@ class Controller:
         self.byte_buffer = np.zeros(2**15,dtype = 'uint8')
         self.byte_buffer_len = 0
 
-        self.cluster_points = None
-        self.separated_clusters = None
+        self.cluster_points = []
+        self.separated_clusters = []
 
         #  = pd.DataFrame(columns = ['X', 'Y','Z','Velocity'])
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
@@ -100,8 +102,25 @@ class Controller:
         signal.signal(signal.SIGINT, self.sig_handler)
 
         thread = threading.Thread(target=self.main_loop)
-        # thread.daemon = True
+        thread.daemon = True
         thread.start()
+
+
+
+        #Plot stuff
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111, projection='3d')
+
+        self.scatter = self.ax.scatter([0],[0],[0])
+        
+        self.ax.set_xlabel('X')
+        self.ax.set_xlim([-2.5, 2.5])
+        self.ax.set_ylabel('Y')
+        self.ax.set_ylim([0, 5])
+        self.ax.set_zlabel('Z')
+        self.ax.set_zlim([-1.5, 3.5])
+        self.draw3DRectangle_once(0,0,0,0,0,0)
+
 
         # while True:
         #     continue
@@ -109,6 +128,86 @@ class Controller:
         # thread_animate = threading.Thread(target=self.view.animate)
        
         # thread_animate.start()
+
+
+
+    def draw3DRectangle_once(self,x1, y1, z1, x2, y2, z2):
+        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+        self.line1, = self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
+
+        self.line2, = self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->
+        self.line3, = self.ax.plot([x2, x1], [y2, y2], [z1, z1], color='b')  # | (down)
+        self.line4, = self.ax.plot([x1, x1], [y2, y1], [z1, z1], color='b')  # <--
+
+        self.line5, = self.ax.plot([x1, x2], [y1, y1], [z2, z2], color='b')  # | (up)
+        self.line6, = self.ax.plot([x2, x2], [y1, y2], [z2, z2], color='b')  # -->
+        self.line7, = self.ax.plot([x2, x1], [y2, y2], [z2, z2], color='b')  # | (down)
+        self.line8, = self.ax.plot([x1, x1], [y2, y1], [z2, z2], color='b')  # <--
+
+        self.line9, = self.ax.plot([x1, x1], [y1, y1], [z1, z2], color='b')  # | (up)
+        self.line10, = self.ax.plot([x2, x2], [y2, y2], [z1, z2], color='b')  # -->
+        self.line11, = self.ax.plot([x1, x1], [y2, y2], [z1, z2], color='b')  # | (down)
+        self.line12, = self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b')  # <--
+
+
+    def draw3DRectangle_update(self,x1, y1, z1, x2, y2, z2):
+        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+        self.line1.set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
+
+        self.line2.set_data_3d([x2, x2], [y1, y2], [z1, z1])  # -->
+        self.line3.set_data_3d([x2, x1], [y2, y2], [z1, z1])  # | (down)
+        self.line4.set_data_3d([x1, x1], [y2, y1], [z1, z1])  # <--
+
+        self.line5.set_data_3d([x1, x2], [y1, y1], [z2, z2])  # | (up)
+        self.line6.set_data_3d([x2, x2], [y1, y2], [z2, z2])  # -->
+        self.line7.set_data_3d([x2, x1], [y2, y2], [z2, z2])  # | (down)
+        self.line8.set_data_3d([x1, x1], [y2, y1], [z2, z2])  # <--
+
+        self.line9.set_data_3d([x1, x1], [y1, y1], [z1, z2])  # | (up)
+        self.line10.set_data_3d([x2, x2], [y2, y2], [z1, z2])  # -->
+        self.line11.set_data_3d([x1, x1], [y2, y2], [z1, z2])  # | (down)
+        self.line12.set_data_3d([x2, x2], [y1, y1], [z1, z2])  # <--
+
+
+    """
+    Creates thread to plot data
+    """
+    def thread_plot(self,frame):
+        print("HERE")
+
+        # while(1)
+        separated_clusters = self.separated_clusters.copy()
+        # centre_points = self.controller.cluster_points
+        
+        # print(separated_clusters)
+    
+        
+        #### Do all the plotting
+        
+        for cluster in separated_clusters:
+            
+            if(not cluster.empty):
+                
+                # df = cluster.drop(cluster.index[0])
+
+                x = cluster['X'].values
+                y = cluster['Y'].values
+                z = cluster['Z'].values
+
+                data = np.vstack([x, y, z])
+                # print(data)
+
+                xmin, xmax, ymin, ymax, zmin, zmax = np.min(data[0, :]), np.max(data[0, :]), np.min(
+                    data[1, :]), np.max(data[1, :]), np.min(data[2, :]), np.max(
+                    data[2, :])
+
+                self.scatter._offsets3d = (data[0,:], data[1, :], data[2, :])
+
+                self.draw3DRectangle_update(xmin, ymin, zmin, xmax, ymax, zmax)
+
+                self.ax.set_title("Frame{}".format(frame))
+
+        return self.line1, self.line2, self.line3, self.line4, self.line5, self.line6, self.line7, self.line8, self.line9, self.line10, self.line11,self.line12,self.scatter
 
 
     # Signal handler to kill entire system
@@ -157,8 +256,8 @@ class Controller:
                         self.cluster_points, self.separated_clusters = self.clustering(testDataNew)
                         # print(testDataNew)
 
-                        # print("clusters")
-                        # print(self.cluster_points)
+                        print("clusters")
+                        print(self.cluster_points)
 
                         # print("separated_clusters")
                         # print(self.separated_clusters)
@@ -514,6 +613,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sig_handler)
 
     interface = Controller()
+
+    while len(interface.separated_clusters) == 0:
+        time.sleep(1)
+
+    ani = animation.FuncAnimation(interface.fig, interface.thread_plot, interval = 1000, cache_frame_data=False)
+    plt.show()
+
     # interface.view.mainloop()
             
     

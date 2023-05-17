@@ -53,7 +53,6 @@ class View():
         self.ax = self.fig.add_subplot(111, projection='3d')
 
         self.scatter = self.ax.scatter([0],[0],[0])
-        plt.show()
         
         self.ax.set_xlabel('X')
         self.ax.set_xlim([-2.5, 2.5])
@@ -71,6 +70,7 @@ class View():
        
 
     def draw3DRectangle(self,x1, y1, z1, x2, y2, z2):
+        
         # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
         self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b')  # | (up)
         self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b')  # -->

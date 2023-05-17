@@ -21,9 +21,9 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
 # Mostly all good, just need Richo to talk me through a bit of the data cleaning in normal_plot
 
+MAX_CSVS = 20
 
-
-df = pd.read_csv('Data_set6_removed_peak_grouping_sitting/Data_0.csv')
+df = pd.read_csv('Data_0.csv')
 # Generate some random data for the scatter plot
 # Dropping the first row
 df = df.drop(df.index[0])
@@ -53,7 +53,7 @@ def PCA_test(x):
 def plot_PCA():
     fig = plt.figure()
     
-    df = pd.read_csv('Data_set5_removed_peak_grouping_standing/Data_0.csv')
+    df = pd.read_csv('Data_0.csv')
     # Dropping the first row
     df = df.drop(df.index[0])
 
@@ -72,7 +72,7 @@ def plot_PCA():
 
 
     # Set labels and title
-    for i in range(1,10,1):
+    for i in range(1,MAX_CSVS,1):
 
         print("plotting dataset {0}".format(i))
         df = pd.read_csv('Data_{}.csv'.format(i))
@@ -115,7 +115,7 @@ def normal_plot():
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    df = pd.read_csv('Data_set5_removed_peak_grouping_standing/Data_0.csv')
+    df = pd.read_csv('Data_0.csv')
     df = df.drop(df.index[0])
 
     # Create a PathPatch object for the polygon marker
@@ -134,10 +134,10 @@ def normal_plot():
     scatter_2 = ax.scatter(center_points['X'],center_points['Y'],center_points['Z'], marker='o',label='centre')
 
     # Set labels and title
-    for i in range(1,10,1):
+    for i in range(1,MAX_CSVS,1):
         print("iterating over csv {0}".format(i))
 
-        df = pd.read_csv('Data_set5_removed_peak_grouping_standing/Data_{}.csv'.format(i))
+        df = pd.read_csv('Data_{}.csv'.format(i))
         df = df.drop(df.index[0])
         
         # Scale the data over a standard distribution
@@ -192,6 +192,7 @@ def normal_plot():
         if(n_clusters_!=0):
             print("NO")
             center_points = np.array(center_points)
+            print(center_points)
             center_points = pd.DataFrame({'X': center_points[:,0],'Y': center_points[:,1],'Z': center_points[:,2],'Velocity':[0]*n_clusters_,'label':np.ones(n_clusters_)})
             center_df = pd.concat([center_df, center_points]).reset_index(drop=True)
             ax.scatter(center_points['X'], center_points['Y'], center_points['Z'],c = 'blue',marker = 's',label='centre',s=200)  # Update cluster centers
