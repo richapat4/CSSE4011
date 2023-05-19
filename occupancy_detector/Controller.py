@@ -51,22 +51,22 @@ class Controller:
         # Richa: Windows
         
         # Linux
-        self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
-        self.data_port = serial.Serial('/dev/ttyACM1', 921600)
+        # self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
+        # self.data_port = serial.Serial('/dev/ttyACM1', 921600)
         
         # Windows
-        # self.cli_port = serial.Serial('COM14', 115200)
-        # self.data_port = serial.Serial('COM15', 921600)
+        self.cli_port = serial.Serial('COM14', 115200)
+        self.data_port = serial.Serial('COM15', 921600)
 
-        token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
-        org = "csse4011"
-        url = "http://localhost:8086"
+        # token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
+        # org = "csse4011"
+        # url = "http://localhost:8086"
 
-        self.bucket="Demo_data"
+        # self.bucket="Demo_data"
 
-        self.write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org, debug=False)
+        # self.write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org, debug=False)
 
-        self.write_api = self.write_client.write_api(write_options=SYNCHRONOUS)
+        # self.write_api = self.write_client.write_api(write_options=SYNCHRONOUS)
 
         self.duration = 2
         # Change the configuration file name
@@ -78,7 +78,7 @@ class Controller:
         self.byte_buffer_len = 0
 
         self.cluster_points = []
-        self.separated_clusters = []
+        self.separated_clusters = pd.DataFrame({'X': [0], 'Y': [0], 'Z': [0],'cluster_num':[0]}, index=[0]) #Init as dataframe
         self.total_lines = []
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
     
@@ -100,7 +100,6 @@ class Controller:
         self.ax = self.fig.add_subplot(111, projection='3d')
 
         self.cluster_points = []
-        self.separated_clusters = []
         self.num_clusters = 0
 
         signal.signal(signal.SIGINT, self.sig_handler)
@@ -109,7 +108,12 @@ class Controller:
         thread.daemon = True
         thread.start()
 
-        self.scatter = self.ax.scatter([0],[0],[0])
+
+        pseudo_data = {'X':[0],'Y':[0],'Z':[0],'cluster_num':[0]}
+        data = pd.DataFrame(pseudo_data)
+
+        #init plot
+        self.scatter = self.ax.scatter(self.separated_clusters['X'], self.separated_clusters['Y'],self.separated_clusters['Z'], c=self.separated_clusters['cluster_num'])
         
         self.ax.set_xlabel('X')
         self.ax.set_xlim([-2.5, 2.5])
@@ -126,6 +130,7 @@ class Controller:
         separated_cluster = []
         total_cluster = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'cluster_num': 0}, index=[0])
 
+        self.separated_clusters = pd.DataFrame() #clear data frame here for new clusters
             
         if(len(testData) > 0):
 
@@ -157,7 +162,9 @@ class Controller:
             
             self.num_clusters = n_clusters_
             self.cluster_points = center_df.drop(center_df.index[0])
-            self.separated_clusters = total_cluster.drop(total_cluster.index[0])
+            total_cluster = total_cluster.drop(total_cluster.index[0])
+            self.separated_clusters = pd.concat([self.separated_clusters, total_cluster], axis=0) 
+            self.separated_clusters = self.separated_clusters.drop(self.separated_clusters.index[0])
 
       
 
@@ -168,16 +175,16 @@ class Controller:
     def thread_plot(self,frame):
         print("HERE")
 
-        separated_clusters = self.separated_clusters.copy()
+        # separated_clusters = self.separated_clusters
+        print(self.separated_clusters['cluster_num'].unique())
+        if not self.separated_clusters.empty:
+            # x = separated_clusters['X'].values
+            # y = separated_clusters['Y'].values
+            # z = separated_clusters['Z'].values
 
-        if not separated_clusters.empty:
-            x = separated_clusters['X'].values
-            y = separated_clusters['Y'].values
-            z = separated_clusters['Z'].values
+            # data = np.vstack([x, y, z])
 
-            data = np.vstack([x, y, z])
-
-            self.scatter._offsets3d = (data[0,:], data[1, :], data[2, :])
+            self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
         
             self.ax.set_title('Number of occupants: {0}'.format(self.num_clusters))
 
@@ -231,7 +238,7 @@ class Controller:
                                 .field("cluster_num", cluster['label'])
                                 )
                             
-                            self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
+                            # self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
 
                         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         print("evaluation done")
