@@ -21,9 +21,11 @@ from sklearn.cluster import DBSCAN
 
 import matplotlib.animation as animation
 from matplotlib.artist import Artist
+from scipy.ndimage import gaussian_filter
 
 MAX_CSVS = 10
 WRITE_GAP = 0.1
+EPSILON = 0.1
 
 
 # Grafana http://localhost:3000/
@@ -134,43 +136,69 @@ class Controller:
     def clustering(self, testData):
 
         center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
-        separated_cluster = []
+       
         total_cluster = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'cluster_num': 0}, index=[0])
 
         self.separated_clusters = pd.DataFrame() #clear data frame here for new clusters
             
         if(len(testData) > 0):
 
+            data = testData.copy()
+            data = data.dropna()
+            x = data['X']
+            y = data['Y']
+            data = np.vstack((x, y))
+
+            sigma = 0.3
+            smoothed_data = gaussian_filter(data, sigma=sigma)
+
+            x = smoothed_data[0,:]
+            y = smoothed_data[1,:]
+
+            smoothed_data = pd.DataFrame({'X': x, 'Y': y})
 
             # Create a db clustering algorithm
-            db = DBSCAN(eps=0.5, min_samples=5).fit(testData)
+            db = DBSCAN(eps=EPSILON, min_samples=10).fit(smoothed_data)
             labels = db.labels_ 
+
+            indices = [count for count, value in enumerate(labels) if value != -1]
+
+            # print("smoothed_data")
+            # print(smoothed_data)
+            # print("labels")
+            # print(labels)
+            # print("indices")
+            # print(indices)
+
+            cluster_indices = [labels[index] for index in indices]
+            cluster_points = testData.loc[indices]
+            cluster_points['cluster_num'] = cluster_indices
+
+            # print("cluster points")
+            # print(cluster_points)
 
             # What shape is the dictionary in that allows it to be accessed this way?
             n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
             n_noise_ = list(labels).count(-1)
 
-            separated_cluster = []
             center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
 
             for cluster_label in range(n_clusters_):
 
-                # Iterate through, assign each point to a cluster and find the centre point of each
-                cluster_points = testData[labels == cluster_label]
-                cluster_points = cluster_points.assign(cluster_num=cluster_label)
+                # # Iterate through, assign each point to a cluster and find the centre point of each
+                cluster = cluster_points[cluster_points['cluster_num'] == cluster_label]
+                # cluster = cluster.assign(cluster_num=cluster_label)
 
-                separated_cluster.append(cluster_points)
+                # total_cluster = pd.concat([total_cluster, cluster_points], axis=0)
 
-                total_cluster = pd.concat([total_cluster, cluster_points], axis=0)
-
-                center_point = np.mean(cluster_points, axis=0)
+                center_point = np.mean(cluster, axis=0)
                 entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
                 center_df.loc[len(center_df)] = entry
             
             self.num_clusters = n_clusters_
             self.cluster_points = center_df.drop(center_df.index[0])
-            total_cluster = total_cluster.drop(total_cluster.index[0])
-            self.separated_clusters = pd.concat([self.separated_clusters, total_cluster], axis=0) 
+            # total_cluster = total_cluster.drop(total_cluster.index[0])
+            self.separated_clusters = cluster_points
             # self.separated_clusters = self.separated_clusters.drop(self.separated_clusters.index[0])
 
       
@@ -496,7 +524,7 @@ class Controller:
                 
                     # Store the data in the detObj dictionary
                     detObj = {"numObj": numDetectedObj, "x": x, "y": y, "z": z, "velocity":velocity}
-                    print(velocity)
+                    # print(velocity)
                     
                     self.testData = pd.DataFrame({"X":x, "Y":y , "Z":z , "Velocity": velocity})
                     self.dataQueue.put(self.testData)
