@@ -38,7 +38,10 @@ f.H = np.array([
     [0., 0., 1., 0., 0., 0.]
 ])
 
-f.R = 5 * np.eye(3)
+f.R = 5 * np.eye(3) #
+
+
+
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
@@ -66,7 +69,7 @@ def main():
         print('predicted: ', f.x)
         ax.scatter(f.x[0],f.x[1],f.x[2],c='blue', marker='o',label='predicted')
         f.update(z)
-        
+
         ax.set_xlabel('X')
         ax.set_xlim([-10,10])
         ax.set_ylabel('Y')

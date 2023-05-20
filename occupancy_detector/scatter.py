@@ -21,9 +21,9 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
 # Mostly all good, just need Richo to talk me through a bit of the data cleaning in normal_plot
 
-MAX_CSVS = 20
+MAX_CSVS = 10
 
-df = pd.read_csv('Data_0.csv')
+df = pd.read_csv('Data_set6_removed_peak_grouping_standing\\Data_set6_removed_peak_grouping_standing\\Data_0.csv')
 # Generate some random data for the scatter plot
 # Dropping the first row
 df = df.drop(df.index[0])
@@ -53,7 +53,7 @@ def PCA_test(x):
 def plot_PCA():
     fig = plt.figure()
     
-    df = pd.read_csv('Data_0.csv')
+    df = pd.read_csv('Data_set6_removed_peak_grouping_standing\\Data_0.csv')
     # Dropping the first row
     df = df.drop(df.index[0])
 
@@ -115,7 +115,7 @@ def normal_plot():
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    df = pd.read_csv('Data_0.csv')
+    df = pd.read_csv('\Data_set6_removed_peak_grouping_standing\\Data_0.csv')
     df = df.drop(df.index[0])
 
     # Create a PathPatch object for the polygon marker

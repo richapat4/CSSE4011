@@ -5,9 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import signal
-
-import queue
-
 import sys
 
 import influxdb_client, os, time
@@ -20,11 +17,15 @@ from View2 import View
 from sklearn.cluster import DBSCAN
 
 import matplotlib.animation as animation
-from matplotlib.artist import Artist
+from matplotlib.artist import 
+
+import queue
+
 
 MAX_CSVS = 10
-WRITE_GAP = 0.1
+WRITE_GAP = 0.2
 
+KALMAN_GAP = 1
 
 # Grafana http://localhost:3000/
 # influxdb http://localhost:8086/
@@ -46,8 +47,6 @@ class Controller:
     Initialise all controller variables
     """
     def __init__(self):
-
-
 
         # Open the serial ports for the configuration and the data ports
 
@@ -75,14 +74,14 @@ class Controller:
 
         self.duration = 2
         # Change the configuration file name
-        configFileName = 'occupancy_detector/profile_config_0.03_velocity_res.cfg'
+        configFileName = 'occupancy_detector/test_4_removed_range_peak_grouping.cfg'
         self.count = 0
 
         # Input buffers for reading into port dicts
         self.byte_buffer = np.zeros(2**15,dtype = 'uint8')
         self.byte_buffer_len = 0
 
-        self.cluster_points = pd.DataFrame()
+        self.cluster_points = []
         self.separated_clusters = pd.DataFrame({'X': [0], 'Y': [0], 'Z': [0],'cluster_num':[0]}, index=[0]) #Init as dataframe
         self.total_lines = []
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
@@ -94,6 +93,7 @@ class Controller:
         self.configParameters = self.parseConfigFile(configFileName)
 
         self.start_time = time.time()
+        self.kalman_time = time.time()
 
         # Main loop 
         self.detObj = {}  
@@ -127,8 +127,6 @@ class Controller:
         self.ax.set_zlabel('Z')
         self.ax.set_zlim([-1.5, 3.5])
 
-        self.dataQueue = queue.Queue(maxsize=5)
-
 
         # Apply clustering algorithm
     def clustering(self, testData):
@@ -143,7 +141,7 @@ class Controller:
 
 
             # Create a db clustering algorithm
-            db = DBSCAN(eps=0.5, min_samples=5).fit(testData)
+            db = DBSCAN(eps=0.8, min_samples=20).fit(testData)
             labels = db.labels_ 
 
             # What shape is the dictionary in that allows it to be accessed this way?
@@ -183,22 +181,17 @@ class Controller:
         print("HERE")
 
         # separated_clusters = self.separated_clusters
-        
+        print(self.separated_clusters['cluster_num'].unique())
         if not self.separated_clusters.empty:
-            try:
-                print(self.separated_clusters['cluster_num'].unique())
-                # x = separated_clusters['X'].values
-                # y = separated_clusters['Y'].values
-                # z = separated_clusters['Z'].values
+            # x = separated_clusters['X'].values
+            # y = separated_clusters['Y'].values
+            # z = separated_clusters['Z'].values
 
-                # data = np.vstack([x, y, z])
+            # data = np.vstack([x, y, z])
 
-                self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
-            
-                self.ax.set_title('Number of occupants: {0}'.format(self.num_clusters))
-
-            except KeyError:
-                pass
+            self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
+        
+            self.ax.set_title('Number of occupants: {0}'.format(self.num_clusters))
 
         return self.scatter
 
@@ -225,19 +218,18 @@ class Controller:
                     self.currentIndex += 1
 
                     # Does the writing every 1.5 seconds
-                   
+                    if((time.time() - self.start_time) > WRITE_GAP):
                         # For some reason this csv writing is breaking the system???
 
                         # Implement data cleaning algorithm here
+                        testDataNew = self.data_cleaning(self.testData.copy())
 
-                    #RECEIVE FROM QUEUE HERE
+                        # Implement DB clustering algorithm here
+                        self.clustering(testDataNew)
+                        
 
-                    testData = self.dataQueue.get()
-
-                    testDataNew = self.data_cleaning(testData.copy())
-
-                    # Implement DB clustering algorithm here
-                    self.clustering(testDataNew)
+                        
+                    
                     
 
                         # This is where we write the field positioning over to influxdb
@@ -245,7 +237,6 @@ class Controller:
 
                         # print(self.cluster_points)
 
-                    if((time.time() - self.start_time) > WRITE_GAP):
                         for index, cluster in self.cluster_points.iterrows():
 
                             point = (
@@ -253,16 +244,19 @@ class Controller:
                                 .field("X", cluster['X'])
                                 .field("Y", cluster['Y'])
                                 .field("Z", cluster['Z'])
-                                .field("cluster", self.num_clusters)
-                                .tag("cluster_num", str(cluster['label']))
+                                .field("cluster_num", cluster['label'])
                                 )
                             
                             # self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
 
-                        # self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+                        self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         print("evaluation done")
                         self.count+=1
                         self.start_time = time.time()
+
+                if((time.time() - self.kalman_time) > KALMAN_GAP):
+                    pass
+
 
             # Stop the program and close everything if Ctrl + c is pressed
             except KeyboardInterrupt:
@@ -274,7 +268,7 @@ class Controller:
 
     # Data cleaning algorithm for applying filters, etc.
     def data_cleaning(self, testData):
-        # testData = testData.drop(testData.index[0])
+        testData = testData.drop(testData.index[0])
 
         testData = testData.loc[:, 'X':'Z']
 
@@ -485,9 +479,14 @@ class Controller:
                         # Store another value within testData. This will only store a max of ten values
                         # if(self.count < MAX_CSVS):
 
-                        # entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
+                        entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
+                        self.testData.loc[len(self.testData)] = entry
+
+                        #enqueue here:
+
                         
-                        # self.testData.loc[len(self.testData)] = entry
+
+
                             # print(self.testData)
                         # count+=1
                         # start_time = time.time()
@@ -496,14 +495,7 @@ class Controller:
                 
                     # Store the data in the detObj dictionary
                     detObj = {"numObj": numDetectedObj, "x": x, "y": y, "z": z, "velocity":velocity}
-                    print(velocity)
                     
-                    self.testData = pd.DataFrame({"X":x, "Y":y , "Z":z , "Velocity": velocity})
-                    self.dataQueue.put(self.testData)
-
-                    # self.testData.loc[len(self.testData)] = entry
-                    # print(detObj)
-
                     dataOK = 1
 
                 elif tlv_type == MMWDEMO_OUTPUT_MSG_RANGE_DOPPLER_HEAT_MAP:
@@ -565,7 +557,7 @@ if __name__ == "__main__":
     while len(interface.separated_clusters) == 0:
         time.sleep(1)
 
-    ani = animation.FuncAnimation(interface.fig, interface.thread_plot, interval = 100, cache_frame_data=False)
+    ani = animation.FuncAnimation(interface.fig, interface.thread_plot, interval = 1000, cache_frame_data=False)
     plt.show()
 
     # interface.view.mainloop()
