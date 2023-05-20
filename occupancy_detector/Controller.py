@@ -22,6 +22,7 @@ from sklearn.cluster import DBSCAN
 import matplotlib.animation as animation
 from matplotlib.artist import Artist
 from scipy.ndimage import gaussian_filter
+import statistics
 
 MAX_CSVS = 10
 WRITE_GAP = 0.1
@@ -112,7 +113,7 @@ class Controller:
         self.ax = self.fig.add_subplot(111, projection='3d')
 
         self.cluster_points = []
-        self.num_clusters = 0
+        self.num_clusters = [0] * 5
 
         self.grid_lines = [[] for i in range(NUM_BOXES)]
 
@@ -135,7 +136,7 @@ class Controller:
         self.ax.set_xlabel('X')
         self.ax.set_xlim([-2.5, 2.5])
         self.ax.set_ylabel('Y')
-        self.ax.set_ylim([0, 5])
+        self.ax.set_ylim([0, 7])
         self.ax.set_zlabel('Z')
         self.ax.set_zlim([-1.5, 3.5])
 
@@ -200,7 +201,10 @@ class Controller:
             for i in range(n_clusters_, NUM_BOXES):
                 self.draw3DRectangle_update(0, 0, 0, 0, 0, 0, i)
             
-            self.num_clusters = n_clusters_
+            self.num_clusters.pop(0)
+            self.num_clusters.append(n_clusters_)
+
+
             self.cluster_points = center_df.drop(center_df.index[0])
             self.separated_clusters = cluster_points
 
@@ -254,8 +258,10 @@ class Controller:
             try:
 
                 self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
-            
-                self.ax.set_title('Number of occupants: {0}'.format(self.num_clusters))
+                print(len(self.num_clusters))
+                self.ax.set_title('Number of occupants: {0} {1} {2}'.format(int(statistics.mean(self.num_clusters)),
+                                                                            int(statistics.median(self.num_clusters)),
+                                                                            statistics.mode(self.num_clusters)))
 
             except KeyError:
                 pass
@@ -539,29 +545,12 @@ class Controller:
                         idX += 4
                         velocity[objectNum] = self.byte_buffer[idX:idX + 4].view(dtype=np.float32)
                         idX += 4
-
-                        # if((time.time() - start_time) > 1):
-                        # Store another value within testData. This will only store a max of ten values
-                        # if(self.count < MAX_CSVS):
-
-                        # entry = pd.Series({"X":x[objectNum], "Y":y[objectNum] , "Z":z[objectNum] , "Velocity": velocity[objectNum]})
-                        
-                        # self.testData.loc[len(self.testData)] = entry
-                            # print(self.testData)
-                        # count+=1
-                        # start_time = time.time()
-                    #     entry = pd.DataFrame([x[objectNum], y[objectNum],z[objectNum],velocity[objectNum]],
-                    #    columns = ['X','Y','Z','Velocity'])
                 
                     # Store the data in the detObj dictionary
                     detObj = {"numObj": numDetectedObj, "x": x, "y": y, "z": z, "velocity":velocity}
-                    # print(velocity)
                     
                     self.testData = pd.DataFrame({"X":x, "Y":y , "Z":z , "Velocity": velocity})
                     self.dataQueue.put(self.testData)
-
-                    # self.testData.loc[len(self.testData)] = entry
-                    # print(detObj)
 
                     dataOK = 1
 
