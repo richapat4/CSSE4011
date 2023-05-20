@@ -26,6 +26,11 @@ from scipy.ndimage import gaussian_filter
 MAX_CSVS = 10
 WRITE_GAP = 0.1
 EPSILON = 0.1
+SIGMA = 0.3
+MIN_SAMPLES = 10
+NUM_BOXES = 10
+BOX_SIZE = 0.2
+FUNC_INTERVAL = 100
 
 
 # Grafana http://localhost:3000/
@@ -109,6 +114,11 @@ class Controller:
         self.cluster_points = []
         self.num_clusters = 0
 
+        self.grid_lines = [[] for i in range(NUM_BOXES)]
+
+        for i in range(NUM_BOXES):
+            self.draw3DRectangle_once(0, 0, 0, 0, 0, 0, i)
+
         signal.signal(signal.SIGINT, self.sig_handler)
 
         thread = threading.Thread(target=self.main_loop)
@@ -149,8 +159,7 @@ class Controller:
             y = data['Y']
             data = np.vstack((x, y))
 
-            sigma = 0.3
-            smoothed_data = gaussian_filter(data, sigma=sigma)
+            smoothed_data = gaussian_filter(data, sigma=SIGMA)
 
             x = smoothed_data[0,:]
             y = smoothed_data[1,:]
@@ -158,24 +167,14 @@ class Controller:
             smoothed_data = pd.DataFrame({'X': x, 'Y': y})
 
             # Create a db clustering algorithm
-            db = DBSCAN(eps=EPSILON, min_samples=10).fit(smoothed_data)
+            db = DBSCAN(eps=EPSILON, min_samples=MIN_SAMPLES).fit(smoothed_data)
             labels = db.labels_ 
 
             indices = [count for count, value in enumerate(labels) if value != -1]
 
-            # print("smoothed_data")
-            # print(smoothed_data)
-            # print("labels")
-            # print(labels)
-            # print("indices")
-            # print(indices)
-
             cluster_indices = [labels[index] for index in indices]
             cluster_points = testData.loc[indices]
             cluster_points['cluster_num'] = cluster_indices
-
-            # print("cluster points")
-            # print(cluster_points)
 
             # What shape is the dictionary in that allows it to be accessed this way?
             n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
@@ -187,39 +186,72 @@ class Controller:
 
                 # # Iterate through, assign each point to a cluster and find the centre point of each
                 cluster = cluster_points[cluster_points['cluster_num'] == cluster_label]
-                # cluster = cluster.assign(cluster_num=cluster_label)
-
-                # total_cluster = pd.concat([total_cluster, cluster_points], axis=0)
 
                 center_point = np.mean(cluster, axis=0)
                 entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
                 center_df.loc[len(center_df)] = entry
+
+                x1, x2, y1, y2, z1, z2 = entry['X'] -  BOX_SIZE, entry['X'] + BOX_SIZE, \
+                        entry['Y'] - BOX_SIZE, entry['Y'] + BOX_SIZE, \
+                        0, 1.8
+                
+                self.draw3DRectangle_update(x1, x2, y1, y2, z1, z2, cluster_label)
+
+            for i in range(n_clusters_, NUM_BOXES):
+                self.draw3DRectangle_update(0, 0, 0, 0, 0, 0, i)
             
             self.num_clusters = n_clusters_
             self.cluster_points = center_df.drop(center_df.index[0])
-            # total_cluster = total_cluster.drop(total_cluster.index[0])
             self.separated_clusters = cluster_points
-            # self.separated_clusters = self.separated_clusters.drop(self.separated_clusters.index[0])
 
-      
+
+    def draw3DRectangle_once(self, x1, x2, y1, y2, z1, z2, place):
+        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+        self.grid_lines[place].append(self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b'))  # | (up)
+
+        self.grid_lines[place].append(self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b'))  # -->
+        self.grid_lines[place].append(self.ax.plot([x2, x1], [y2, y2], [z1, z1], color='b'))  # | (down)
+        self.grid_lines[place].append(self.ax.plot([x1, x1], [y2, y1], [z1, z1], color='b'))  # <--
+
+        self.grid_lines[place].append(self.ax.plot([x1, x2], [y1, y1], [z2, z2], color='b'))  # | (up)
+        self.grid_lines[place].append(self.ax.plot([x2, x2], [y1, y2], [z2, z2], color='b'))  # -->
+        self.grid_lines[place].append(self.ax.plot([x2, x1], [y2, y2], [z2, z2], color='b'))  # | (down)
+        self.grid_lines[place].append(self.ax.plot([x1, x1], [y2, y1], [z2, z2], color='b'))  # <--
+
+        self.grid_lines[place].append(self.ax.plot([x1, x1], [y1, y1], [z1, z2], color='b'))  # | (up)
+        self.grid_lines[place].append(self.ax.plot([x2, x2], [y2, y2], [z1, z2], color='b'))  # -->
+        self.grid_lines[place].append(self.ax.plot([x1, x1], [y2, y2], [z1, z2], color='b'))  # | (down)
+        self.grid_lines[place].append(self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b'))  # <--
+
+
+    def draw3DRectangle_update(self, x1, x2, y1, y2, z1, z2, place):
+        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+       
+        self.grid_lines[place][0][0].set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
+
+        self.grid_lines[place][1][0].set_data_3d([x2, x2], [y1, y2], [z1, z1])  # -->
+        self.grid_lines[place][2][0].set_data_3d([x2, x1], [y2, y2], [z1, z1])  # | (down)
+        self.grid_lines[place][3][0].set_data_3d([x1, x1], [y2, y1], [z1, z1])  # <--
+
+        self.grid_lines[place][4][0].set_data_3d([x1, x2], [y1, y1], [z2, z2])  # | (up)
+        self.grid_lines[place][5][0].set_data_3d([x2, x2], [y1, y2], [z2, z2])  # -->
+        self.grid_lines[place][6][0].set_data_3d([x2, x1], [y2, y2], [z2, z2])  # | (down)
+        self.grid_lines[place][7][0].set_data_3d([x1, x1], [y2, y1], [z2, z2])  # <--
+
+        self.grid_lines[place][8][0].set_data_3d([x1, x1], [y1, y1], [z1, z2])  # | (up)
+        self.grid_lines[place][9][0].set_data_3d([x2, x2], [y2, y2], [z1, z2])  # -->
+        self.grid_lines[place][10][0].set_data_3d([x1, x1], [y2, y2], [z1, z2])  # | (down)
+        self.grid_lines[place][11][0].set_data_3d([x2, x2], [y1, y1], [z1, z2])  # <--
+                
 
 
     """
     Creates thread to plot data
     """
     def thread_plot(self,frame):
-        print("HERE")
-
-        # separated_clusters = self.separated_clusters
         
         if not self.separated_clusters.empty:
             try:
-                print(self.separated_clusters['cluster_num'].unique())
-                # x = separated_clusters['X'].values
-                # y = separated_clusters['Y'].values
-                # z = separated_clusters['Z'].values
-
-                # data = np.vstack([x, y, z])
 
                 self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
             
@@ -288,7 +320,6 @@ class Controller:
                             # self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
 
                         # self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
-                        print("evaluation done")
                         self.count+=1
                         self.start_time = time.time()
 
@@ -593,7 +624,7 @@ if __name__ == "__main__":
     while len(interface.separated_clusters) == 0:
         time.sleep(1)
 
-    ani = animation.FuncAnimation(interface.fig, interface.thread_plot, interval = 100, cache_frame_data=False)
+    ani = animation.FuncAnimation(interface.fig, interface.thread_plot, interval = FUNC_INTERVAL, cache_frame_data=False)
     plt.show()
 
     # interface.view.mainloop()
