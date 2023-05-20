@@ -19,9 +19,11 @@ from sklearn.cluster import DBSCAN
 import matplotlib.animation as animation
 from matplotlib.artist import Artist
 
+from scipy.ndimage import gaussian_filter
 MAX_CSVS = 10
 WRITE_GAP = 1
 TEST_SAMPLES = 20
+EPSILON = 0.2
 
 
 # Grafana http://localhost:3000/
@@ -103,6 +105,11 @@ class Controller:
         self.separated_clusters = []
         self.num_clusters = 0
 
+        self.grid_lines = [[], [], [], [], []]
+
+        for i in range(5):
+            self.draw3DRectangle_once(0, 0, 0, 0, 0, 0, i)
+
         signal.signal(signal.SIGINT, self.sig_handler)
 
         thread = threading.Thread(target=self.main_loop)
@@ -110,11 +117,6 @@ class Controller:
         thread.start()
 
         self.scatter = self.ax.scatter([0],[0],[0])
-
-        self.grid_lines = [[], [], [], [], []]
-
-        for i in range(5):
-            self.grid_lines[i] = self.draw3DRectangle_once(0, 0, 0, 0, 0, 0, i)
 
         
         self.ax.set_xlabel('X')
@@ -125,43 +127,63 @@ class Controller:
         self.ax.set_zlim([-1.5, 3.5])
 
 
-        # Apply clustering algorithm
+    # Apply clustering algorithm
     def clustering(self, testData):
 
         center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
         separated_cluster = []
         total_cluster = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'cluster_num': 0}, index=[0])
 
-            
+
         if(len(testData) > 0):
 
+            data = testData.copy()
+            x = data['X']
+            y = data['Y']
+            data = np.vstack((x, y))
+
+            sigma = 1.0
+            smoothed_data = gaussian_filter(data, sigma=sigma)
 
             # Create a db clustering algorithm
-            db = DBSCAN(eps=0.2, min_samples=5).fit(testData)
+            db = DBSCAN(eps=EPSILON, min_samples=5).fit(smoothed_data)
             labels = db.labels_ 
 
             # What shape is the dictionary in that allows it to be accessed this way?
             n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
             n_noise_ = list(labels).count(-1)
 
-            print("{0} {1}".format(n_clusters_, len(self.testData)))
-            print(self.testData)
+            # print("{0} {1}".format(n_clusters_, len(self.testData)))
+            # print(self.testData)
 
-            separated_cluster = []
             center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
 
             for cluster_label in range(n_clusters_):
 
                 # Iterate through, assign each point to a cluster and find the centre point of each
-                cluster_points = testData[labels == cluster_label]
+                # This is only going to return a two-dimensional array, which is no good
+                cluster_points = smoothed_data[labels == cluster_label]
                 cluster_points = cluster_points.assign(cluster_num=cluster_label)
 
-                separated_cluster.append(cluster_points)
+                for _, row in cluster_points.iterrow():
+                    testRow = testData[testData["X"] == row['X'] and testData['Y'] == row['Y']]
+                    testRow['cluster_num'] = row['cluster_num']
+                    total_cluster = pd.concat([total_cluster, testRow], axis=0)
 
-                total_cluster = pd.concat([total_cluster, cluster_points], axis=0)
+                # merged_df = pd.merge(cluster_points, testData, left_on=['X', 'Y'], right_on=['X', 'Y'], how='inner')
+                # matching_rows = merged_df['X', 'Y']
+                # cluster_points = testData[testData.isin(matching_rows.values).all(axis=1)]
+
+                # total_cluster = pd.concat([total_cluster, cluster_points], axis=0)
 
                 center_point = np.mean(cluster_points, axis=0)
-                entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
+
+                z_points = testData[testData['X'] > center_point['X'] - EPSILON and testData['X'] < center_point['X'] + EPSILON
+                                    and testData['Y'] > center_point['Y'] - EPSILON and testData['Y'] < center_point['Y'] + EPSILON]
+                
+                z = z_points['Z'].mean()
+
+                entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':z, 'label':center_point['cluster_num']})
                 center_df.loc[len(center_df)] = entry
 
 
@@ -169,14 +191,14 @@ class Controller:
                 #  check, but hopefully it works
                 #----------------------------------------------------------------------------------------------
 
-            #     x1, x2, y1, y2, z1, z2 = np.min(cluster_points[0, :]), np.max(cluster_points[0, :]), np.min(
-            #             cluster_points[1, :]), np.max(cluster_points[1, :]), np.min(cluster_points[2, :]), np.max(
-            #             cluster_points[2, :])
+                x1, x2, y1, y2, z1, z2 = cluster_points['X'].min(), cluster_points['X'].max(), \
+                        cluster_points['Y'].min(), cluster_points['Y'].max(), \
+                        cluster_points['Z'].min(), cluster_points['Z'].max()
                 
-            #     self.draw3DRectangle_update(x1, x2, y1, y2, z1, z2, cluster_label)
+                self.draw3DRectangle_update(x1, x2, y1, y2, z1, z2, cluster_label)
 
-            # for i in range(n_clusters_, 5):
-            #     self.draw3DRectangle_update(0, 0, 0, 0, 0, 0, i)
+            for i in range(n_clusters_, 5):
+                self.draw3DRectangle_update(0, 0, 0, 0, 0, 0, i)
 
             #-------------------------------------------------------------------------------------------------
                 
@@ -184,6 +206,7 @@ class Controller:
             self.num_clusters = n_clusters_
             self.cluster_points = center_df.drop(center_df.index[0])
             self.separated_clusters = total_cluster.drop(total_cluster.index[0])
+
 
 
     """
@@ -248,7 +271,8 @@ class Controller:
                                     .field("X", cluster['X'])
                                     .field("Y", cluster['Y'])
                                     .field("Z", cluster['Z'])
-                                    .field("cluster_num", cluster['label'])
+                                    .field("cluster", self.num_clusters)
+                                    .tag("cluster_num", str(cluster['label']))
                                     )
                                 
                                 self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
@@ -285,6 +309,9 @@ class Controller:
 
     def draw3DRectangle_update(self,x1, y1, z1, x2, y2, z2, place):
         # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+        print(place)
+        print(self.grid_lines)
+        print(self.grid_lines[0])
         self.grid_lines[place][0].set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
 
         self.grid_lines[place][1].set_data_3d([x2, x2], [y1, y2], [z1, z1])  # -->
@@ -514,6 +541,7 @@ class Controller:
                         self.testData.loc[len(self.testData)] = entry
 
                         if len(self.testData) > TEST_SAMPLES:
+                            print()
                             self.testData = self.testData.drop(self.testData.index[0])
                             
 
@@ -545,11 +573,11 @@ class Controller:
                     rangeArray = np.array(range(configParameters["numRangeBins"]))*configParameters["rangeIdxToMeters"]
                     dopplerArray = np.multiply(np.arange(-configParameters["numDopplerBins"]/2 , configParameters["numDopplerBins"]/2), configParameters["dopplerResolutionMps"])
                     
-                    plt.clf()
-                    cs = plt.contourf(rangeArray,dopplerArray,rangeDoppler)
-                    self.fig.colorbar(cs, shrink=0.9)
-                    self.fig.canvas.draw()
-                    plt.pause(0.1)
+                    # plt.clf()
+                    # cs = plt.contourf(rangeArray,dopplerArray,rangeDoppler)
+                    # self.fig.colorbar(cs, shrink=0.9)
+                    # self.fig.canvas.draw()
+                    # plt.pause(0.1)
     
             # Remove already processed data
             if idX > 0 and self.byte_buffer_len>idX:
