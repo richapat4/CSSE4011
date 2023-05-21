@@ -16,7 +16,6 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from flightsql import FlightSQLClient
  
 from datetime import datetime
-from View2 import View
 from sklearn.cluster import DBSCAN
 
 import matplotlib.animation as animation

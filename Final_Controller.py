@@ -16,7 +16,6 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from flightsql import FlightSQLClient
  
 from datetime import datetime
-from View2 import View
 from sklearn.cluster import DBSCAN
 
 import matplotlib.animation as animation
@@ -39,6 +38,8 @@ FUNC_INTERVAL = 100
 
 # ------------------------------------------------------------------
 
+
+# Handles exiting upon pressing ctrl+c
 def sig_handler(signal, frame):
 
     if interface.cli_port is not None and interface.data_port is not None:
@@ -48,6 +49,8 @@ def sig_handler(signal, frame):
 
     sys.exit(0)
 
+
+# Controller class for data reading
 class Controller:
 
     """
@@ -71,18 +74,17 @@ class Controller:
         self.cli_port = serial.Serial('COM14', 115200)
         self.data_port = serial.Serial('COM15', 921600)
 
-        # token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
-        # org = "csse4011"
-        # url = "http://localhost:8086"
+        token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
+        org = "csse4011"
+        url = "http://localhost:8086"
 
-        # self.bucket="Demo_data"
+        self.bucket="Demo_data"
 
-        # self.write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org, debug=False)
+        self.write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org, debug=False)
 
-        # self.write_api = self.write_client.write_api(write_options=SYNCHRONOUS)
+        self.write_api = self.write_client.write_api(write_options=SYNCHRONOUS)
 
         self.duration = 2
-        # Change the configuration file name
         configFileName = 'occupancy_detector/profile_config_0.03_velocity_res.cfg'
         self.count = 0
 
@@ -103,7 +105,6 @@ class Controller:
 
         self.start_time = time.time()
 
-        # Main loop 
         self.detObj = {}  
         self.frameData = {}    
         self.currentIndex = 0
@@ -117,9 +118,11 @@ class Controller:
 
         self.grid_lines = [[] for i in range(NUM_BOXES)]
 
+        # Draw the grid for funcanimate
         for i in range(NUM_BOXES):
             self.draw3DRectangle_once(0, 0, 0, 0, 0, 0, i)
 
+        # Start thread for data reading
         signal.signal(signal.SIGINT, self.sig_handler)
 
         thread = threading.Thread(target=self.main_loop)
@@ -143,12 +146,10 @@ class Controller:
         self.dataQueue = queue.Queue(maxsize=5)
 
 
-        # Apply clustering algorithm
+    # Apply clustering algorithm
     def clustering(self, testData):
 
         center_df = pd.DataFrame({'X': [0],'Y': [0],'Z': [0], 'label':[0]})
-       
-        total_cluster = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'cluster_num': 0}, index=[0])
 
         self.separated_clusters = pd.DataFrame() #clear data frame here for new clusters
             
@@ -177,7 +178,6 @@ class Controller:
             cluster_points = testData.loc[indices]
             cluster_points['cluster_num'] = cluster_indices
 
-            # What shape is the dictionary in that allows it to be accessed this way?
             n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
             n_noise_ = list(labels).count(-1)
 
@@ -185,32 +185,33 @@ class Controller:
 
             for cluster_label in range(n_clusters_):
 
-                # # Iterate through, assign each point to a cluster and find the centre point of each
+                # Iterate through, assign each point to a cluster and find the centre point of each
                 cluster = cluster_points[cluster_points['cluster_num'] == cluster_label]
 
                 center_point = np.mean(cluster, axis=0)
                 entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
                 center_df.loc[len(center_df)] = entry
 
+                # Box dimensions, then update hit boxes
                 x1, x2, y1, y2, z1, z2 = entry['X'] -  BOX_SIZE, entry['X'] + BOX_SIZE, \
                         entry['Y'] - BOX_SIZE, entry['Y'] + BOX_SIZE, \
                         0, 1.8
                 
                 self.draw3DRectangle_update(x1, x2, y1, y2, z1, z2, cluster_label)
 
+            # Remove any extraneous hitboxes
             for i in range(n_clusters_, NUM_BOXES):
                 self.draw3DRectangle_update(0, 0, 0, 0, 0, 0, i)
             
+            # Set plotting variables
             self.num_clusters.pop(0)
             self.num_clusters.append(n_clusters_)
-
-
             self.cluster_points = center_df.drop(center_df.index[0])
             self.separated_clusters = cluster_points
 
-
+    # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
     def draw3DRectangle_once(self, x1, x2, y1, y2, z1, z2, place):
-        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+        
         self.grid_lines[place].append(self.ax.plot([x1, x2], [y1, y1], [z1, z1], color='b'))  # | (up)
 
         self.grid_lines[place].append(self.ax.plot([x2, x2], [y1, y2], [z1, z1], color='b'))  # -->
@@ -228,8 +229,8 @@ class Controller:
         self.grid_lines[place].append(self.ax.plot([x2, x2], [y1, y1], [z1, z2], color='b'))  # <--
 
 
+    # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
     def draw3DRectangle_update(self, x1, x2, y1, y2, z1, z2, place):
-        # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
        
         self.grid_lines[place][0][0].set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
 
@@ -258,7 +259,8 @@ class Controller:
             try:
 
                 self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
-                print(len(self.num_clusters))
+
+                # Need to choose mean, median or mode (whichever works better)
                 self.ax.set_title('Number of occupants: {0} {1} {2}'.format(int(statistics.mean(self.num_clusters)),
                                                                             int(statistics.median(self.num_clusters)),
                                                                             statistics.mode(self.num_clusters)))
@@ -286,46 +288,35 @@ class Controller:
             try:
                 dataOk, self.frameNumber, self.detObj = self.readAndParseData18xx(self.data_port, self.configParameters)
                 if dataOk:
+
                     # Store the current frame into frameData
                     self.frameData[self.currentIndex] = self.detObj
                     self.currentIndex += 1
-
-                    # Does the writing every 1.5 seconds
-                   
-                        # For some reason this csv writing is breaking the system???
-
-                        # Implement data cleaning algorithm here
 
                     #RECEIVE FROM QUEUE HERE
 
                     testData = self.dataQueue.get()
 
-                    testDataNew = self.data_cleaning(testData.copy())
+                    testDataNew = testData.loc[:, 'X':'Z'].copy()
 
                     # Implement DB clustering algorithm here
                     self.clustering(testDataNew)
-                    
 
-                        # This is where we write the field positioning over to influxdb
-                        # This is only going to be useful once we have clustering algorithms
-
-                        # print(self.cluster_points)
-
+                    # This is where we write the field positioning over to influxdb
                     if((time.time() - self.start_time) > WRITE_GAP):
-                        for index, cluster in self.cluster_points.iterrows():
+                        for _, cluster in self.cluster_points.iterrows():
 
                             point = (
                                 Point("Position")
                                 .field("X", cluster['X'])
                                 .field("Y", cluster['Y'])
                                 .field("Z", cluster['Z'])
-                                .field("cluster", self.num_clusters)
+                                .field("cluster", statistics.median(self.num_clusters))
                                 .tag("cluster_num", str(cluster['label']))
                                 )
                             
-                            # self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
+                            self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
 
-                        # self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
                         self.count+=1
                         self.start_time = time.time()
 
@@ -335,16 +326,6 @@ class Controller:
                 self.cli_port.close()
                 self.data_port.close()
                 break
-                
-
-    # Data cleaning algorithm for applying filters, etc.
-    def data_cleaning(self, testData):
-        # testData = testData.drop(testData.index[0])
-
-        testData = testData.loc[:, 'X':'Z']
-
-
-        return testData
     
 
     # Function to configure the serial ports and send the data from
@@ -577,12 +558,6 @@ class Controller:
                     rangeArray = np.array(range(configParameters["numRangeBins"]))*configParameters["rangeIdxToMeters"]
                     dopplerArray = np.multiply(np.arange(-configParameters["numDopplerBins"]/2 , configParameters["numDopplerBins"]/2), configParameters["dopplerResolutionMps"])
                     
-                    # plt.clf()
-                    # cs = plt.contourf(rangeArray,dopplerArray,rangeDoppler)
-                    # self.fig.colorbar(cs, shrink=0.9)
-                    # self.fig.canvas.draw()
-                    # plt.pause(0.1)
-    
             # Remove already processed data
             if idX > 0 and self.byte_buffer_len>idX:
                 shiftSize = totalPacketLen
@@ -616,7 +591,6 @@ if __name__ == "__main__":
     ani = animation.FuncAnimation(interface.fig, interface.thread_plot, interval = FUNC_INTERVAL, cache_frame_data=False)
     plt.show()
 
-    # interface.view.mainloop()
             
     
 
