@@ -26,6 +26,7 @@ import statistics
 MAX_CSVS = 10
 WRITE_GAP = 0.1
 EPSILON = 0.15
+RADIUS = 1
 SIGMA = 0.35
 MIN_SAMPLES = 15
 NUM_BOXES = 10
@@ -92,7 +93,7 @@ class Controller:
         self.byte_buffer = np.zeros(2**15,dtype = 'uint8')
         self.byte_buffer_len = 0
 
-        self.cluster_points = pd.DataFrame()
+        self.cluster_points = pd.DataFrame({'X': [0], 'Y': [0], 'Z': [0],'cluster_num':[0]}, index=[0]) #Init as dataframe
         self.separated_clusters = pd.DataFrame({'X': [0], 'Y': [0], 'Z': [0],'cluster_num':[0]}, index=[0]) #Init as dataframe
         self.total_lines = []
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
@@ -114,8 +115,7 @@ class Controller:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, projection='3d')
 
-        self.cluster_points = []
-        self.num_clusters = [0] * 3
+        self.num_clusters = [0] * 10
 
         self.grid_lines = [[] for i in range(NUM_BOXES)]
 
@@ -130,13 +130,10 @@ class Controller:
         thread.daemon = True
         thread.start()
 
-
-        pseudo_data = {'X':[0],'Y':[0],'Z':[0],'cluster_num':[0]}
-        data = pd.DataFrame(pseudo_data)
-
         #init plot
-        self.scatter = self.ax.scatter(self.separated_clusters['X'], self.separated_clusters['Y'],self.separated_clusters['Z'], c=self.separated_clusters['cluster_num'])
-        
+        self.scatter = self.ax.scatter(self.separated_clusters['X'], self.separated_clusters['Y'],self.separated_clusters['Z'], c=self.separated_clusters['cluster_num'], zorder=1)
+        self.scatter_centre = self.ax.scatter(self.cluster_points['X'], self.cluster_points['Y'],self.cluster_points['Z'], zorder=3, marker='s', c='blue', s=200)
+
         self.ax.set_xlabel('X')
         self.ax.set_xlim([-2.5, 2.5])
         self.ax.set_ylabel('Y')
@@ -160,7 +157,7 @@ class Controller:
             y = data['Y']
             data = np.vstack((x, y))
 
-            smoothed_data = gaussian_filter(data, sigma=SIGMA)
+            smoothed_data = gaussian_filter(data, sigma=SIGMA, radius=RADIUS)
 
             x = smoothed_data[0,:]
             y = smoothed_data[1,:]
@@ -259,9 +256,10 @@ class Controller:
             try:
 
                 self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
+                self.scatter_centre._offsets3d = (self.cluster_points['X'], self.cluster_points['Y'], self.cluster_points['Z'])
 
                 # Need to choose mean, median or mode (whichever works better)
-                self.ax.set_title('Number of occupants: {0}'.format(statistics.median(self.num_clusters)))
+                self.ax.set_title('Number of occupants: {0}'.format(max(self.num_clusters)))
 
             except KeyError:
                 pass
@@ -309,7 +307,7 @@ class Controller:
                                 .field("X", cluster['X'])
                                 .field("Y", cluster['Y'])
                                 .field("Z", cluster['Z'])
-                                .field("cluster", statistics.median(self.num_clusters))
+                                .field("cluster", max(self.num_clusters))
                                 .tag("cluster_num", str(cluster['label']))
                                 )
                             
