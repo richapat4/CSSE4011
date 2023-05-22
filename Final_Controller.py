@@ -25,9 +25,9 @@ import statistics
 
 MAX_CSVS = 10
 WRITE_GAP = 0.1
-EPSILON = 0.1
-SIGMA = 0.3
-MIN_SAMPLES = 10
+EPSILON = 0.15
+SIGMA = 0.35
+MIN_SAMPLES = 15
 NUM_BOXES = 10
 BOX_SIZE = 0.2
 FUNC_INTERVAL = 100
@@ -67,12 +67,12 @@ class Controller:
         # Richa: Windows
         
         # Linux
-        # self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
-        # self.data_port = serial.Serial('/dev/ttyACM1', 921600)
+        self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
+        self.data_port = serial.Serial('/dev/ttyACM1', 921600)
         
         # Windows
-        self.cli_port = serial.Serial('COM14', 115200)
-        self.data_port = serial.Serial('COM15', 921600)
+        # self.cli_port = serial.Serial('COM14', 115200)
+        # self.data_port = serial.Serial('COM15', 921600)
 
         token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
         org = "csse4011"
@@ -108,13 +108,14 @@ class Controller:
         self.detObj = {}  
         self.frameData = {}    
         self.currentIndex = 0
+        self.dataQueue = queue.Queue(maxsize=5)
 
         #Plot stuff
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, projection='3d')
 
         self.cluster_points = []
-        self.num_clusters = [0] * 5
+        self.num_clusters = [0] * 3
 
         self.grid_lines = [[] for i in range(NUM_BOXES)]
 
@@ -142,8 +143,6 @@ class Controller:
         self.ax.set_ylim([0, 7])
         self.ax.set_zlabel('Z')
         self.ax.set_zlim([-1.5, 3.5])
-
-        self.dataQueue = queue.Queue(maxsize=5)
 
 
     # Apply clustering algorithm
@@ -209,6 +208,7 @@ class Controller:
             self.cluster_points = center_df.drop(center_df.index[0])
             self.separated_clusters = cluster_points
 
+
     # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
     def draw3DRectangle_once(self, x1, x2, y1, y2, z1, z2, place):
         
@@ -261,9 +261,7 @@ class Controller:
                 self.scatter._offsets3d = (self.separated_clusters['X'], self.separated_clusters['Y'], self.separated_clusters['Z'])
 
                 # Need to choose mean, median or mode (whichever works better)
-                self.ax.set_title('Number of occupants: {0} {1} {2}'.format(int(statistics.mean(self.num_clusters)),
-                                                                            int(statistics.median(self.num_clusters)),
-                                                                            statistics.mode(self.num_clusters)))
+                self.ax.set_title('Number of occupants: {0}'.format(statistics.median(self.num_clusters)))
 
             except KeyError:
                 pass
