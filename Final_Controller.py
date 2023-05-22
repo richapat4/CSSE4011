@@ -27,7 +27,7 @@ MAX_CSVS = 10
 WRITE_GAP = 0.1
 EPSILON = 0.15
 RADIUS = 1
-SIGMA = 0.35
+SIGMA = 0.3
 MIN_SAMPLES = 15
 NUM_BOXES = 10
 BOX_SIZE = 0.2
@@ -115,7 +115,7 @@ class Controller:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, projection='3d')
 
-        self.num_clusters = [0] * 10
+        self.num_clusters = [0] * 5
 
         self.grid_lines = [[] for i in range(NUM_BOXES)]
 
@@ -259,7 +259,7 @@ class Controller:
                 self.scatter_centre._offsets3d = (self.cluster_points['X'], self.cluster_points['Y'], self.cluster_points['Z'])
 
                 # Need to choose mean, median or mode (whichever works better)
-                self.ax.set_title('Number of occupants: {0}'.format(max(self.num_clusters)))
+                self.ax.set_title('Number of occupants: {0}'.format((statistics.mode(self.num_clusters))))
 
             except KeyError:
                 pass
