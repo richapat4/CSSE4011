@@ -45,10 +45,10 @@ class View():
     """
     Initialise the many variables that are required for user interface
     """
-    def __init__(self, controller):
+    def __init__(self):
 
         # super().__init__()
-        self.controller = controller
+        # self.controller = controller
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, projection='3d')
 

@@ -23,7 +23,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
 MAX_CSVS = 10
 
-df = pd.read_csv('Data_set6_removed_peak_grouping_standing\\Data_set6_removed_peak_grouping_standing\\Data_0.csv')
+df = pd.read_csv('Data_set5_removed_peak_grouping_standing\\Data_0.csv')
 # Generate some random data for the scatter plot
 # Dropping the first row
 df = df.drop(df.index[0])
@@ -53,7 +53,7 @@ def PCA_test(x):
 def plot_PCA():
     fig = plt.figure()
     
-    df = pd.read_csv('Data_set6_removed_peak_grouping_standing\\Data_0.csv')
+    df = pd.read_csv('Data_set5_removed_peak_grouping_standing\\Data_0.csv')
     # Dropping the first row
     df = df.drop(df.index[0])
 
@@ -75,7 +75,7 @@ def plot_PCA():
     for i in range(1,MAX_CSVS,1):
 
         print("plotting dataset {0}".format(i))
-        df = pd.read_csv('Data_{}.csv'.format(i))
+        df = pd.read_csv('Data_set5_removed_peak_grouping_standing\\Data_{}.csv'.format(i))
         # Dropping the first row
         df = df.drop(df.index[0])
 
@@ -115,7 +115,7 @@ def normal_plot():
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    df = pd.read_csv('\Data_set6_removed_peak_grouping_standing\\Data_0.csv')
+    df = pd.read_csv('Data_set5_removed_peak_grouping_standing\\Data_0.csv')
     df = df.drop(df.index[0])
 
     # Create a PathPatch object for the polygon marker
@@ -137,7 +137,7 @@ def normal_plot():
     for i in range(1,MAX_CSVS,1):
         print("iterating over csv {0}".format(i))
 
-        df = pd.read_csv('Data_{}.csv'.format(i))
+        df = pd.read_csv('Data_set5_removed_peak_grouping_standing\\Data_{}.csv'.format(i))
         df = df.drop(df.index[0])
         
         # Scale the data over a standard distribution
@@ -212,6 +212,7 @@ def normal_plot():
 
         # Pause to allow time for the plot to be updated
         plt.pause(1)
+        plt.savefig("Data_{}.png".format(i))
 
     plt.show()
     # Save all the plot points
