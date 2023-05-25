@@ -164,7 +164,7 @@ class Controller:
                         (127, 127, 255), (255, 0, 255), (255, 127, 255),
                         (127, 0, 255), (127, 0, 127),(127, 10, 255), (0,255, 127)]
 
-    # Variables initialization
+        # Variables initialization
 
         self.currentIndext = 0
 
@@ -174,7 +174,7 @@ class Controller:
         thread = threading.Thread(target=self.main_loop)
         thread.daemon = True
         thread.start()
-        
+
     
     def createimage(self,w,h):
         size = (w, h, 1)
