@@ -75,12 +75,12 @@ class Controller:
         # Richa: Windows
         
         # Linux
-        # self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
-        # self.data_port = serial.Serial('/dev/ttyACM1', 921600)
+        self.cli_port = serial.Serial('/dev/ttyACM0', 115200)
+        self.data_port = serial.Serial('/dev/ttyACM1', 921600)
         
         # Windows
-        self.cli_port = serial.Serial('COM14', 115200)
-        self.data_port = serial.Serial('COM15', 921600)
+        # self.cli_port = serial.Serial('COM14', 115200)
+        # self.data_port = serial.Serial('COM15', 921600)
 
         token = "whl_f4m7pZbnLdO6KHYmNFjFdJaGimywqZXMezcOCwFcwJyUOW0nomnbHXzMdrxf3TeKOGbzpUW4B2rDXgUu5Q=="
         org = "csse4011"
@@ -135,14 +135,7 @@ class Controller:
         self.num_clusters = [0] * 5
 
         self.grid_lines = [[] for i in range(NUM_BOXES)]
-
-
-        # Start thread for data reading
-        signal.signal(signal.SIGINT, self.sig_handler)
-
-        thread = threading.Thread(target=self.main_loop)
-        thread.daemon = True
-        thread.start()
+        print(self.grid_lines)
 
         # #init plot
         self.scatter = self.ax.scatter(self.separated_clusters['X'], self.separated_clusters['Y'],self.separated_clusters['Z'], c=self.separated_clusters['cluster_num'], zorder=1)
@@ -155,16 +148,16 @@ class Controller:
         self.ax.set_zlabel('Z')
         self.ax.set_zlim([-1.5, 3.5])
 
-        # # Draw the grid for funcanimate
-        # for i in range(NUM_BOXES):
-        #     self.draw3DRectangle_once(0, 0, 0, 0, 0, 0, i)
-
+        # Draw the grid for funcanimate
+        for i in range(NUM_BOXES):
+            self.draw3DRectangle_once(0, 0, 0, 0, 0, 0, i)
+        print("finished init boxes")
 
         #unsure what dist thresh is might be in mm units
 
         # self.tracker = Tracker(150, 30, 5)
 
-        self.tracker = Tracker(150, 30, 5)
+        self.tracker = Tracker(50, 30, 5)
 
         self.skip_frame_count = 0
         self.track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
@@ -174,6 +167,14 @@ class Controller:
     # Variables initialization
 
         self.currentIndext = 0
+
+            # Start thread for data reading
+        signal.signal(signal.SIGINT, self.sig_handler)
+
+        thread = threading.Thread(target=self.main_loop)
+        thread.daemon = True
+        thread.start()
+        
     
     def createimage(self,w,h):
         size = (w, h, 1)
@@ -238,7 +239,7 @@ class Controller:
                         entry['Y'] - BOX_SIZE, entry['Y'] + BOX_SIZE, \
                         0, 1.8
                 
-            #     self.draw3DRectangle_update(x1, x2, y1, y2, z1, z2, cluster_label)
+                self.draw3DRectangle_update(x1, x2, y1, y2, z1, z2, cluster_label)
 
             # # Remove any extraneous hitboxes
             # for i in range(n_clusters_, NUM_BOXES):
@@ -274,6 +275,8 @@ class Controller:
 
     # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
     def draw3DRectangle_update(self, x1, x2, y1, y2, z1, z2, place):
+
+        print(place)
        
         self.grid_lines[place][0][0].set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
 
@@ -307,7 +310,7 @@ class Controller:
                 # Need to choose mean, median or mode (whichever works better)
                 
                 # self.ax.set_title('Number of occupants: {0}'.format((statistics.mode(self.num_clusters))))
-                self.ax.set_title('Number of occupants: {0}'.format((len(self.tracker.tracks))))
+                self.ax.set_title('Number of occupants: {0}'.format(self.occupancy_count))
 
             except KeyError:
                 pass
@@ -494,12 +497,20 @@ class Controller:
         
         self.tracker.update(centers)
         self.occupancy_count = 0
+
         for j in range(len(self.tracker.tracks)):
             if (len(self.tracker.tracks[j].trace) > 2):
-                self.occupancy_count+=1
+
+                
                 
                 x = int(self.tracker.tracks[j].trace[-1][0,0])
                 y = int(self.tracker.tracks[j].trace[-1][0,1])
+
+                print('{0}{1}{2}',x,y,self.tracker.tracks[j].trackId)
+                
+                if(x < 512 and y < 512):
+                    self.occupancy_count+=1
+
                 tl = (x-10,y-10)
                 br = (x+10,y+10)
                 cv2.rectangle(frame,tl,br,self.track_colors[j],1)
