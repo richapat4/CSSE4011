@@ -26,12 +26,12 @@ def main():
 		
 		centers = data[:,i,:]
 
-		print("This is{0}".format(centers))
+		# print("This is{0}".format(centers))
 
 		frame = createimage(512,512)
 		if (len(centers) > 0):
 			
-			print(type(centers))
+			# print(type(centers))
 
 			# tracker.update(centers)
 
