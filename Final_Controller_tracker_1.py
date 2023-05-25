@@ -23,7 +23,7 @@ from matplotlib.artist import Artist
 from scipy.ndimage import gaussian_filter
 import statistics
 
-from tracker import Tracker
+from tracker_1 import Tracker
 
 
 MAX_CSVS = 10
@@ -326,7 +326,7 @@ class Controller:
                     # print(centers)
                 # If centroids are detected then track them
                     if (len(centers) > 0):
-
+                        
                         # Track object using Kalman Filter
                         self.tracker.Update(centers)
 

@@ -12,7 +12,7 @@
 import cv2
 import copy
 from detectors import Detectors
-from tracker import Tracker
+from tracker_1 import Tracker
 
 
 def main():
