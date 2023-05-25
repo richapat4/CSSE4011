@@ -18,6 +18,6 @@ Accompanying instructions for AWR1843 configuration can be found [here](https://
 4) Flash Out Of Box demo prebuilt binaries using UniFlash
 5) Configure AWR1843 SOP pins for functional mode
 7) Press the reset button on AWR1843Boost
-8) Set up system as shown below
-<img src="https://github.com/richapat4/CSSE4011/assets/91168723/6360f88a-4e24-4b12-b429-66c0e0f2ba08" width="400">
+8) Set up radar as shown below
+<img width="287" alt="radar_setup" src="https://github.com/richapat4/CSSE4011/assets/91168723/db36a11a-4374-49a1-8a03-fc7315b47804">  
 10) Run Final_Controller.py from the Git home directory
