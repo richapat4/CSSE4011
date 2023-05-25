@@ -20,4 +20,5 @@ Accompanying instructions for AWR1843 configuration can be found [here](https://
 7) Press the reset button on AWR1843Boost
 8) Set up radar as shown below
 <img width="287" alt="radar_setup" src="https://github.com/richapat4/CSSE4011/assets/91168723/db36a11a-4374-49a1-8a03-fc7315b47804">  
-10) Run Final_Controller.py from the Git home directory
+
+9) Run Final_Controller.py from the Git home directory
