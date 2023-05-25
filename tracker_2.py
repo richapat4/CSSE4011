@@ -31,6 +31,8 @@ class Tracker(object):
 		self.trackId = 0
 		self.tracks = []
 
+		#self.prev_time = time.time()
+
 	def update(self, detections):
 		if len(self.tracks) == 0:
 			for i in range(detections.shape[0]):

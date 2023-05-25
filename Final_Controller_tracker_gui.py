@@ -102,12 +102,11 @@ class Controller:
         self.byte_buffer_len = 0
 
         self.cluster_points = pd.DataFrame({'X': [0], 'Y': [0], 'Z': [0],'cluster_num':[0]}, index=[0]) #Init as dataframe
-
         self.pixel_points = pd.DataFrame({'X': [0], 'Y': [0], 'Z': [0],'cluster_num':[0]}, index=[0]) #Init as dataframe
-
         self.separated_clusters = pd.DataFrame({'X': [0], 'Y': [0], 'Z': [0],'cluster_num':[0]}, index=[0]) #Init as dataframe
         self.total_lines = []
         self.testData = pd.DataFrame({'X': 0, 'Y': 0, 'Z': 0,'Velocity': 2}, index=[0])
+        self.kalman_frame = pd.DataFrame({'X': [0], 'Y': [0], "track_num": [0]}, index=[0])
     
         # Configurate the serial port
         self.serialConfig(configFileName)
@@ -128,18 +127,19 @@ class Controller:
         self.ax = self.fig.add_subplot(1,2,1, projection='3d')
         self.ax1 = self.fig.add_subplot(1,2,2)
 
-        self.frame = self.createimage(512,512)
+        # self.frame = self.createimage(256,256)
 
-        im = self.ax1.imshow(self.frame,interpolation="nearest")
 
         self.num_clusters = [0] * 5
 
         self.grid_lines = [[] for i in range(NUM_BOXES)]
-        print(self.grid_lines)
+        # print(self.grid_lines)
 
         # #init plot
         self.scatter = self.ax.scatter(self.separated_clusters['X'], self.separated_clusters['Y'],self.separated_clusters['Z'], c=self.separated_clusters['cluster_num'], zorder=1)
         self.scatter_centre = self.ax.scatter(self.cluster_points['X'], self.cluster_points['Y'],self.cluster_points['Z'], zorder=3, marker='s', c='blue', s=200)
+
+        self.scatter_2 = self.ax1.scatter(self.kalman_frame['X'], self.kalman_frame['Y'], marker='o', c=self.kalman_frame['track_num'], cmap='viridis')
 
         self.ax.set_xlabel('X')
         self.ax.set_xlim([-2.5, 2.5])
@@ -148,14 +148,17 @@ class Controller:
         self.ax.set_zlabel('Z')
         self.ax.set_zlim([-1.5, 3.5])
 
+        self.ax1.set_xlabel('X')
+        self.ax1.set_xlim([2.5, -2.5])
+        self.ax1.set_ylabel('Y')
+        self.ax1.set_ylim([7, 0])
+
+
         # Draw the grid for funcanimate
         for i in range(NUM_BOXES):
             self.draw3DRectangle_once(0, 0, 0, 0, 0, 0, i)
-        print("finished init boxes")
 
         #unsure what dist thresh is might be in mm units
-
-        # self.tracker = Tracker(150, 30, 5)
 
         self.tracker = Tracker(50, 30, 5)
 
@@ -228,8 +231,8 @@ class Controller:
                 center_point = np.mean(cluster, axis=0)
  
                 entry = pd.Series({'X':center_point['X'], 'Y':center_point['Y'], 'Z':center_point['Z'], 'label':center_point['cluster_num']})
-                entry_pixel = pd.Series({'X':np.round(center_point['X'] *100) + 250, 'Y':np.round(center_point['Y'] * 100) + 250, 'Z':np.round(center_point['Z'] * 100) + 250, 'label':center_point['cluster_num']})
-                
+                entry_pixel = pd.Series({'X':np.round(center_point['X'] *100) + 250, 'Y':np.round(center_point['Y'] * 100), 'Z':np.round(center_point['Z'] * 100) + 250, 'label':center_point['cluster_num']})
+
                 center_df.loc[len(center_df)] = entry
 
                 pixel_df.loc[len(center_df)] = entry_pixel
@@ -240,12 +243,9 @@ class Controller:
                         0, 1.8
                 
                 self.draw3DRectangle_update(x1, x2, y1, y2, z1, z2, cluster_label)
-
-            # # Remove any extraneous hitboxes
-            # for i in range(n_clusters_, NUM_BOXES):
-            #     self.draw3DRectangle_update(0, 0, 0, 0, 0, 0, i)
             
             # Set plotting variables
+
             self.num_clusters.pop(0)
             self.num_clusters.append(n_clusters_)
             self.cluster_points = center_df.drop(center_df.index[0])
@@ -275,8 +275,6 @@ class Controller:
 
     # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
     def draw3DRectangle_update(self, x1, x2, y1, y2, z1, z2, place):
-
-        print(place)
        
         self.grid_lines[place][0][0].set_data_3d([x1, x2], [y1, y1], [z1, z1])  # | (up)
 
@@ -293,7 +291,6 @@ class Controller:
         self.grid_lines[place][9][0].set_data_3d([x2, x2], [y2, y2], [z1, z2])  # -->
         self.grid_lines[place][10][0].set_data_3d([x1, x1], [y2, y2], [z1, z2])  # | (down)
         self.grid_lines[place][11][0].set_data_3d([x2, x2], [y1, y1], [z1, z2])  # <--
-                
 
 
     """
@@ -308,8 +305,6 @@ class Controller:
                 self.scatter_centre._offsets3d = (self.cluster_points['X'], self.cluster_points['Y'], self.cluster_points['Z'])
 
                 # Need to choose mean, median or mode (whichever works better)
-                
-                # self.ax.set_title('Number of occupants: {0}'.format((statistics.mode(self.num_clusters))))
                 self.ax.set_title('Number of occupants: {0}'.format(self.occupancy_count))
 
             except KeyError:
@@ -333,6 +328,7 @@ class Controller:
         # So this is all well and good. Just have to figure out where all the outputs go now
         while True:
             try:
+
                 dataOk, self.frameNumber, self.detObj = self.readAndParseData18xx(self.data_port, self.configParameters)
                 if dataOk:
 
@@ -349,70 +345,27 @@ class Controller:
                     # Implement DB clustering algorithm here
                     self.clustering(testDataNew)
 
-                    #CENTERS FORMAT: 
-                    # b = np.array([[x], [y]])
-                    # centers.append(np.round(b))
-                    
-                    # If centroids are detected then track them
-                    
-                    # coordinates = self.cluster_points.loc[:, 'X':'Y']
-
                     coordinates = self.pixel_points.loc[:, 'X':'Y']
-                
-                    # print(coordinates)
-
-
-
-                    #For one frame this is what the center data looks like 
-                    # [[484 108]
-                    # [141 309]
-                    # [461 321]
-                    # [358  49]
-                    # [425 358]
-                    # [433  59]
-                    # [ 69 471]
-                    # [117 143]
-                    # [186  64]
-                    # [  7  17]]
-                    # Create the centers list
-
                     centers = coordinates.to_numpy()
-
-                    # centers =[   [ np.array([[x, y]]) ] for x, y in coordinates]
-
-                    # print("new centers:{}".format(centers))
-
-                   
                     frame = self.createimage(512,512)
                     
                     if (len(centers) > 0):
-                        self.tracking(frame,centers)
-                        
-
-                        # time.sleep(0.1)
-                        # cv2.imwrite('output_image{}.jpg'.format(self.count), frame)
-
-                    
-                    # print("{0}{1}{2}{3}{4}".format,x1,y1,x2,y2,clr)
-                                    
-                                    # cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)),
-                                            # self.track_colors[clr], 2)
-                                
+                        self.tracking(frame,centers)                     
 
                     # # This is where we write the field positioning over to influxdb
-                    # if((time.time() - self.start_time) > WRITE_GAP):
-                    #     for _, cluster in self.cluster_points.iterrows():
+                    if((time.time() - self.start_time) > WRITE_GAP):
+                        for _, cluster in self.cluster_points.iterrows():
 
-                    #         point = (
-                    #             Point("Position")
-                    #             .field("X", cluster['X'])
-                    #             .field("Y", cluster['Y'])
-                    #             .field("Z", cluster['Z'])
-                    #             .field("cluster", max(self.num_clusters))
-                    #             .tag("cluster_num", str(cluster['label']))
-                    #             )
+                            point = (
+                                Point("Position")
+                                .field("X", cluster['X'])
+                                .field("Y", cluster['Y'])
+                                .field("Z", cluster['Z'])
+                                .field("cluster", self.occupancy_count)
+                                .tag("cluster_num", str(cluster['label']))
+                                )
                             
-                            # self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
+                            self.write_api.write(bucket=self.bucket, org="csse4011", record=point)
 
                         self.count+=1
                         self.start_time = time.time()
@@ -446,6 +399,7 @@ class Controller:
         config = [line.rstrip('\r\n') for line in open(configFileName)]
         for i in config:
             
+
             # Split the line
             splitWords = i.split(" ")
             
@@ -498,40 +452,54 @@ class Controller:
         self.tracker.update(centers)
         self.occupancy_count = 0
 
-        for j in range(len(self.tracker.tracks)):
-            if (len(self.tracker.tracks[j].trace) > 2):
+        self.kalman_frame = pd.DataFrame({'X': [0], 'Y': [0], "track_num": [0]}, index=[0])
 
-                
+        for j in range(len(self.tracker.tracks)):
+            if (len(self.tracker.tracks[j].trace) > 1):
                 
                 x = int(self.tracker.tracks[j].trace[-1][0,0])
                 y = int(self.tracker.tracks[j].trace[-1][0,1])
-
-                print('{0}{1}{2}',x,y,self.tracker.tracks[j].trackId)
-                
-                if(x < 512 and y < 512):
-                    self.occupancy_count+=1
-
-                tl = (x-10,y-10)
-                br = (x+10,y+10)
-                cv2.rectangle(frame,tl,br,self.track_colors[j],1)
-                cv2.putText(frame,str(self.tracker.tracks[j].trackId), (x-10,y-20),0, 0.5, self.track_colors[j],2)
 
                 for k in range(len(self.tracker.tracks[j].trace)):
                     x = int(self.tracker.tracks[j].trace[k][0,0])
                     y = int(self.tracker.tracks[j].trace[k][0,1])
 
-                    cv2.circle(frame,(x,y), 3, self.track_colors[j],-1)
-                cv2.circle(frame,(x,y), 6, self.track_colors[j],-1)
+                    entry = pd.Series({'X': (x - 250) / 100, 'Y': y / 100, 'track_num': j})
+                    self.kalman_frame.loc[len(self.kalman_frame)] = entry
 
-            #Plot original cluster centers
-            # cv2.circle(frame,(int(data[j,i,0]),int(data[j,i,1])), 6, (0,0,0),-1)
-        self.frame = frame 
-        # self.ax1.imshow(frame,interpolation = 'nearest')
-        # plt.pause(0.1)
 
     def kalman_animate(self,n):
-        self.ax1.imshow(self.frame,interpolation="nearest")
-        return
+
+        
+        try:
+            if len(self.kalman_frame) > 1:
+
+                self.kalman_frame = self.kalman_frame.drop(self.kalman_frame.index[0])
+
+                # Calculate value counts for 'col1'
+                value_counts = self.kalman_frame['track_num'].value_counts()
+
+                # Create a boolean mask for values appearing at least 5 times
+                mask = self.kalman_frame['track_num'].map(lambda x: value_counts[x] >= 10)
+
+                # Filter the DataFrame based on the mask
+                self.kalman_frame = self.kalman_frame[mask]
+
+                self.occupancy_count = self.kalman_frame['track_num'].nunique()
+
+                coordinates = np.column_stack([self.kalman_frame.X, self.kalman_frame.Y])
+
+                self.scatter_2.set_offsets(coordinates)
+
+                self.scatter_2.set_array(self.kalman_frame['track_num'])
+
+                self.scatter_2.set_clim(self.kalman_frame['track_num'].min() ,self.kalman_frame['track_num'].max())
+
+        except KeyError:
+
+            return self.scatter_2
+
+        return self.scatter_2
 
     # Funtion to read and parse the incoming data
     # Kinda disgusting parsing, but it works and doesn't require any updating so all good!!!
@@ -721,18 +689,11 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sig_handler)
 
     interface = Controller()
-    # interface.main_loop()
-    
-    # plt.show()
-
 
     while len(interface.separated_clusters) == 0:
         time.sleep(1)
 
-    # while True:
-    #     continue
     ani1 = animation.FuncAnimation(interface.fig, interface.thread_plot, interval = FUNC_INTERVAL, cache_frame_data=False)
-    # plt.show()
 
     ani2 = animation.FuncAnimation(interface.fig, interface.kalman_animate, interval = FUNC_INTERVAL, cache_frame_data=False)
     plt.show()

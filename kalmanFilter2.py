@@ -10,8 +10,9 @@ except Exception as e:
 
 class KalmanFilter(object):
 	"""docstring for KalmanFilter"""
+	#100
 
-	def __init__(self, dt=1,stateVariance=1,measurementVariance=1, 
+	def __init__(self, dt=1,stateVariance=1,measurementVariance=20, 
 														method="Velocity" ):
 		super(KalmanFilter, self).__init__()
 		self.method = method
@@ -57,6 +58,7 @@ class KalmanFilter(object):
 	def correct(self, currentMeasurement):
 		self.kalmanGain = self.predictedErrorCov*self.H.T*np.linalg.pinv(
 								self.H*self.predictedErrorCov*self.H.T+self.R)
+		# print(self.predictedErrorCov)
 		self.state = self.predictedState + self.kalmanGain*(currentMeasurement
 											   - (self.H*self.predictedState))
 		
