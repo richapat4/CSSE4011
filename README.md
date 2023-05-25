@@ -1,5 +1,8 @@
 # CSSE4011
-CSSE4011 Radar Project
+CSSE4011 Radar Project  
+A system that accurately detects and tracks the number of occupants in a room using mmW radar technology (AWR1843) and provides the output in a GUI and online dashboard.  
+<src="https://user-images.githubusercontent.com/91168723/240888954-561075b1-fa91-444a-be2b-d3a6ac8d344b.png" img width="300">
+<src="https://user-images.githubusercontent.com/91168723/240889894-9b5128ca-50d1-491b-b774-abfb65d061b3.png" img width="300">
 
 ## Instructions for re-configuration
 
